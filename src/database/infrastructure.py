@@ -1,0 +1,16 @@
+from aws_cdk import (
+    RemovalPolicy,
+    aws_dynamodb as db
+)
+from constructs import Construct
+
+class StJamesDatabase(Construct):
+    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
+        super().__init__(scope, id, **kwargs)
+
+        self.eventTable = db.Table(
+            self, "EventTable",
+            partition_key=db.Attribute(name="id", type=db.AttributeType.STRING),
+            removal_policy=RemovalPolicy.DESTROY,
+            billing_mode=db.BillingMode.PAY_PER_REQUEST
+        )

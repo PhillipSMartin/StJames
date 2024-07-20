@@ -3,7 +3,7 @@ import os
 
 import aws_cdk as cdk
 
-from st_james.st_james_stack import StJamesStack
+from src.st_james_stack import StJamesStack
 
 
 app = cdk.App()
