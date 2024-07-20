@@ -14,8 +14,7 @@ class StJamesStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-
-        database = StJamesDatabase(self, "StJamesDatabase", tags={'Project': 'StJames'})
+        database = StJamesDatabase(self, "StJamesDatabase")
 
         with open('data/calendar.json', 'r') as file:
             calendar_data = json.load(file)
@@ -23,7 +22,7 @@ class StJamesStack(Stack):
         # Create a Lambda function to insert the data
         initialize_events = lambda_.Function(
             self, 'InitializeEventsLambda',
-            name='StJames-initialize-events',
+            function_name='StJames-initialize-events',
             runtime=lambda_.Runtime.PYTHON_3_8,
             handler='index.handler',
             code=lambda_.Code.from_asset('src/lambda/initialize_events'),
@@ -31,8 +30,7 @@ class StJamesStack(Stack):
                 'TABLE_NAME': database.eventTable.table_name,
                 'CALENDAR_DATA': json.dumps(calendar_data)
 
-            },
-            tags={'Project': 'StJames'}
+            }
         )
 
         # Grant the Lambda function write permissions to the table
@@ -51,9 +49,7 @@ class StJamesStack(Stack):
             ),
             policy=cr.AwsCustomResourcePolicy.from_sdk_calls(
                 resources=cr.AwsCustomResourcePolicy.ANY_RESOURCE
-
-            ),
-            tags={'Project': 'StJames'}
+            )
         )
 
         # Output the table name

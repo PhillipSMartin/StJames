@@ -6,7 +6,7 @@ from constructs import Construct
 
 class StJamesDatabase(Construct):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
-        super().__init__(scope, id, **kwargs)
+        super().__init__(scope, id)
 
         self.eventTable = db.Table(
             self, "EventTable",
