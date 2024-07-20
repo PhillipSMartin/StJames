@@ -10,7 +10,9 @@ class StJamesDatabase(Construct):
 
         self.eventTable = db.Table(
             self, "EventTable",
+            table_name="StJamesEvents",
             partition_key=db.Attribute(name="id", type=db.AttributeType.STRING),
+            sort_key=db.Attribute(name="date", type=db.AttributeType.STRING),
             removal_policy=RemovalPolicy.DESTROY,
             billing_mode=db.BillingMode.PAY_PER_REQUEST
         )
