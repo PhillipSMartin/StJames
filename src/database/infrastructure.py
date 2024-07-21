@@ -8,8 +8,9 @@ class StJamesDatabase(Construct):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id)
 
-        self.eventTable = db.Table(
-            self, "EventTable",
+        # Create the DynamoDB table to hold events
+        self.eventsTable = db.Table(
+            self, "EventsTable",
             table_name="StJamesEvents",
             partition_key=db.Attribute(name="id", type=db.AttributeType.STRING),
             sort_key=db.Attribute(name="date", type=db.AttributeType.STRING),
