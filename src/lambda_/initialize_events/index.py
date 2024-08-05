@@ -36,8 +36,10 @@ def handler(event, context):
         try:
             with table.batch_writer() as batch:
                 for index, item in enumerate(calendar_data):
-                    item['id'] = str(uuid.uuid4())
-                    item['post'] = ['gov', 'moms', 'sojourner', 'patch']
+                    item['date_id'] = f"{item['date']}#{str(uuid.uuid4())}"
+                    del item['date']
+                    if item.get('access') == 'public':
+                        item['post'] = ['gov', 'moms', 'sojourner', 'patch']
                     batch.put_item(Item=item)
                     if (index + 1) % 100 == 0:
                         print(f"Inserted {index + 1} items")

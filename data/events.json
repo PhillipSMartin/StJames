@@ -1,89 +1,104 @@
 [
     {
+      "access": "private",
       "title": "Anniversary Kick-Off Dinner",
       "date": "2024-09-28",
       "time": "7-10 pm",
       "description": "Please join us as we kick off our anniversary year with a festive cocktail party featuring live music, catered food, and members of the Popham family, along with special guests from the community. Friends of St. James Dakota Martin and Keiji Ishiguri, along with our Organist and Director of Music, Victoria Shields, will lend their musical talents to make for a celebratory evening. Members of the Popham family will also offer brief remarks."
     },
     {
+      "access": "public",
       "title": "Silver Dime Ceremony & Guest Forum",
       "date": "2024-09-29",
       "time": "10:30 am",
       "description": "William Popham/'s original land lease required the vestry and wardens of St. James the Less to pay a silver dime to a Popham descendant whenever requested. Join us Sunday morning at 10:30am for a service of traditional hymns, liturgy, and the historic payment of a silver dime to members of the Popham family. Followed at 11:30 by a forum by Jim Boulden, Popham descendent, sharing his recent research on the Popham and Morris family history with the slave trade in Barbados, with special attention given to the enslaved men, women and children who worked on their estates. Come learn from this important lecture on the complexity of our history, which is also part of our identity as Episcopalians, parishioners of St. James the Less, and members of the worldwide Anglican Communion."
     },
     {
+      "access": "public",
       "title": "Caribbean Night",
       "date": "2025-05-17",
       "time": "6-10 pm",
       "description": "A celebration of the diversity of our parish and of the Anglican Communion that we/'re a proud part of. Come dance to a steel drum band and enjoy Caribbean food -- lots of it!"
     },
     {
+      "access": "public",
       "title": "Celebration of Our Diversity and the Anglican Communion",
       "date": "2025-05-18",
       "time": "10:30 am",
       "description": "On Sunday, we/'ll continue the celebration of our diverse parish at the 10:30 service, with a steel drum band accompanying the congregation and choir in worship. Mother Storm will also use different liturgies from around the Anglican Communion to enhance our worship."
     },
     {
+      "access": "public",
       "title": "Popham Day",
       "date": "2025-06-07",
       "time": "10 am - 4 pm",
       "description": "Join us for our second annual Popham Day, a celebration of our grounds and history, with cameos from William Popham and his wife. Dress in your mid-19th century finest if you wish, or just show up and learn about our history, buy plants for your garden, do a grave rubbing, and visit the petting zoo in the churchyard. Church and grounds tours offered all day."
     },
     {
+      "access": "public",
       "title": "175th Anniversary Festive Evensong for All Saints",
       "date": "2024-11-03",
       "time": "5 pm",
       "description": "Join the Choir of St. James for the traditional Anglican service of Evensong as we remember the saints that have gone on before us. Following the service will be a festive reception hosted by the Music Guild."
     },
     {
+      "access": "public",
       "title": "Composers of St. James with Historic Sermons",
       "date": "2025-02-02",
       "time": "3 pm",
       "description": "Join us for a concert featuring several composers who/'ve been members of St. James the Less, including Cab Calloway and Harold Friedell. Pieces will be interspersed with excerpts from historic sermons, including the sermon preached after Lincoln/'s assassination, and Father George Kempsell/'s sermon following the controversial Holly Ball affair."
     },
     {
+      "access": "public",
       "title": "Organ and Brass Fireworks Concert",
       "date": "2025-05-04",
       "time": "3 pm",
       "description": "The last concert of the St. James Concert Series ends with a brass and organ blast. Interim Director of Music and Organist, Victoria Shields, along with our Easter brass quintet will present an exciting program that will have you on the edge of your seats. Reception follows to celebrate a fantastic year."
     },
     {
+      "access": "public",
       "title": "Our Origin Story, 1840s-1850s",
       "date": "2024-10-06",
       "time": "11:30 am",
       "description": "Drawing from our archives and historical documents, parishioner Hadley Miller guides us through the early years of St. James the Less. Building on Jim Boulden/'s inaugural lecture the week before, she/'ll cover the Morris and Popham families, the early years of St. James, and what came before."
     },
     {
+      "access": "public",
       "title": "Early Growth and Challenges, 1860s-1880s",
       "date": "2024-11-03",
       "time": "11:30 am",
       "description": "The Civil War and Palm Sunday fire presented some of our earliest challenges as a parish. Parishioner Russell Crane tells us about how the leadership of St. James responded to the issues in the day, making St. James a stronger, more resilient parish."
     },
     {
+      "access": "public",
       "title": "Special Guests Lecture: Veterans of St. James the Less",
       "date": "2024-11-11",
       "time": "11:30 am",
       "description": "Veteran, researcher, and historian Bill Stump returns to St. James the Less to share with us loads of information about the veterans in our graveyard. This talk will take place in various parts of the graveyard, so dress warmly."
     },
     {
+      "access": "public",
       "title": "St. James the Less in a New Century, 1890s-1910s",
       "date": "2024-12-08",
       "time": "11:30 am",
       "description": "The new century--our second as a parish--brought significant change to our sleepy, rural parish. Parishioner Toni Lewis walks us through the founding of the Parish Messenger, the first big pandemic of 1918, WWI, and electricity!"
     },
     {
+      "access": "public",
       "title": "The Largest Church in Westchester, 1920s-1940s",
       "date": "2025-03-09",
       "time": "11:30 am",
       "description": "The 1920s-40s brought tremendous change to St. James the Less. Rapidly increasing membership with the addition of the commuter rail necessitated more space for our growing congregation. The additions of the Great Hall, church transepts and chancel under the leadership of Dudley Stroup and Harry Price made St. James more recognizably the church it is today. Scarsdale was /'ground zero/' for Episcopalianism, making us, for a time, the largest church in Westchester county. Parishioner Russell Grant guides us through this eventful period of our history."
     },
     {
+      "access": "public",
       "title": "Special Guests: Taking a Stance - The Holly Ball Affair, 1950s-1970s",
       "date": "2025-04-06",
       "time": "11:30 am",
       "description": "Parishioner, lifelong area resident, and history teacher John McNally talks to us about one of the most famous events for St. James on a national stage: the rector/'s refusal of Communion to the parishioners who denied access of a young Christian man of Jewish parentage to the Scarsdale Golf Club/'s annual debutante ball, the Holly Ball. John will be joined by Geff Kempsell, the son of that rector, the Rev. George Kempsell, who remembers the event and its aftermath well, and also local rabbis."
     },
     {
+      "access": "public",
       "title": "St. James Present/Future, 1980s-Present -- And Beyond",
       "date": "2025-05-04",
       "time": "11:30 am",

@@ -18,7 +18,7 @@ def handler(event, context):
 
     # Query items with date greater than today
     response = table.query(
-        KeyConditionExpression=Key('date').gt(today)
+        KeyConditionExpression=Key('access').eq('public') & Key('date_id').gt(today)
     )
 
     for item in response['Items']:
