@@ -8,6 +8,62 @@ def process_moms():
     # Stub function that currently returns False
     return False
 
+def process_gov():
+    # Stub function that currently returns False
+    return False
+
+def process_sojourner():
+    # Stub function that currently returns False
+    return False
+
+def process_patch():
+    # Stub function that currently returns False
+    return False
+
+def move_to_posted(item, website):
+    item['post'].remove(website)
+    if 'posted' not in item:
+        item['posted'] = []
+    item['posted'].append(website) 
+    
+def post_to_websites(item): 
+    modified = False
+
+    if 'moms' in item['post']:
+        result = process_moms()
+        print(f"process_moms returned: {result}")
+
+        if result:
+            move_to_posted(item, 'moms')
+            modified = True
+
+    if 'gov' in item['post']:
+        result = process_gov()
+        print(f"process_gov returned: {result}")
+
+        if result:
+            move_to_posted(item, 'gov')
+            modified = True
+
+    if 'sojourner' in item['post']:
+        result = process_sojourner()
+        print(f"process_sojourner returned: {result}")
+
+        if result:
+            move_to_posted(item, 'sojourner')
+            modified = True
+
+    if 'patch' in item['post']:
+        result = process_patch()
+        print(f"process_patch returned: {result}")
+        
+        if result:
+            move_to_posted(item, 'patch')
+            modified = True
+
+    return modified
+
+
 def handler(event, context):
     # Initialize DynamoDB client
     dynamodb = boto3.resource('dynamodb')
@@ -22,20 +78,13 @@ def handler(event, context):
     )
 
     for item in response['Items']:
-        print(f"Processing: {item['title']}")
         if 'post' in item and isinstance(item['post'], list):
-            if 'moms' in item['post']:
-                result = process_moms()
-                print(f"process_moms returned: {result}")
+            print(f"Processing: {item['title']}: post={item['post']}")
 
-                if result:
-                    item['post'].remove('moms')
-                    if 'posted' not in item:
-                        item['posted'] = []
-                    item['posted'].append('moms')
-
-                    # Update the item in DynamoDB
-                    table.put_item(Item=item)
+            if post_to_websites(item):
+                # Update the item in DynamoDB
+                print(f"Updating: {item['title']}: posted={item['posted']}")
+                table.put_item(Item=item)
 
     return {
         'statusCode': 200,
