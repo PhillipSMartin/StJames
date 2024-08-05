@@ -18,7 +18,7 @@ class StJamesStack(Stack):
         # Create the DynamoDB tables
         database = StJamesDatabase(self, "StJamesDatabase")
 
-        # Create and fill the S3 buckets
+        # Create and fill the S3 buckets (don't need this - already done)
         storage = StJamesStorage(self, "StJamesStorage")
 
         # Create the Lambda functions

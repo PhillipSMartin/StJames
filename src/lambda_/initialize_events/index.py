@@ -18,21 +18,43 @@ def handler(event, context):
     bucket_name = os.environ['BUCKET_NAME']
     file_key = os.environ['FILE_KEY']
 
+    print(f"Checking if table {os.environ['TABLE_NAME']} is empty")
     if is_table_empty(table):
-        # Get the data from the S3 bucket
-        response = s3.get_object(Bucket=bucket_name, Key=file_key)
-        calendar_data = json.loads(response['Body'].read().decode('utf-8'))
+        print(f"Table is empty. Fetching data from S3 bucket {bucket_name}, file {file_key}")
+        try:
+            response = s3.get_object(Bucket=bucket_name, Key=file_key)
+            calendar_data = json.loads(response['Body'].read().decode('utf-8'))
+            print(f"Successfully fetched data from S3. Number of items: {len(calendar_data)}")
+        except Exception as e:
+            print(f"Error fetching data from S3: {str(e)}")
+            return {
+                'statusCode': 500,
+                'body': json.dumps('Error fetching data from S3')
+            }
 
-        # Insert the data into the DynamoDB table
-        with table.batch_writer() as batch:
-            for item in calendar_data:
-                item['id'] = str(uuid.uuid4())  # Generate a unique ID for each item
-                batch.put_item(Item=item)
+        print("Inserting data into DynamoDB table")
+        try:
+            with table.batch_writer() as batch:
+                for index, item in enumerate(calendar_data):
+                    item['id'] = str(uuid.uuid4())
+                    item['post'] = ['gov', 'moms', 'sojourner', 'patch']
+                    batch.put_item(Item=item)
+                    if (index + 1) % 100 == 0:
+                        print(f"Inserted {index + 1} items")
+            print(f"Successfully inserted {len(calendar_data)} items into DynamoDB")
+        except Exception as e:
+            print(f"Error inserting data into DynamoDB: {str(e)}")
+            return {
+                'statusCode': 500,
+                'body': json.dumps('Error inserting data into DynamoDB')
+            }
+
         return {
             'statusCode': 200,
             'body': json.dumps('Data inserted successfully')
         }
     else:
+        print("Table is not empty, no data inserted")
         return {
             'statusCode': 200,
             'body': json.dumps('Table is not empty, no data inserted')

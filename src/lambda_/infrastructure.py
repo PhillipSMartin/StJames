@@ -1,7 +1,6 @@
 from aws_cdk import (
     aws_iam as iam,
     aws_lambda as lambda_,
-    custom_resources as cr,
     Duration
 )
 from constructs import Construct
@@ -29,36 +28,22 @@ class StJamesLambda(Construct):
             timeout=Duration.seconds(30),
         )
 
-        # Grant the Lambda function write permissions to the table
+        # Grant the Lambda function read/write permissions to the table
         eventTable.grant_read_write_data(initialize_events)
         dataBucket.grant_read(initialize_events)
 
-        # Use a Custom Resource to run the Lambda function 
-        custom_resource_role = iam.Role(
-            self, 'InitializeEventsCustomResourceRole',
-            assumed_by=iam.ServicePrincipal('lambda.amazonaws.com'),
-            managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSLambdaBasicExecutionRole')
-            ]
-        )
-        initialize_events.grant_invoke(custom_resource_role)
-
-        cr.AwsCustomResource(
-            self, 'InitializeEventsCustomResource',
-            on_create=cr.AwsSdkCall(
-                service='Lambda',
-                action='invoke',
-                physical_resource_id=cr.PhysicalResourceId.of('InitializeEventsCustomResource'),
-                parameters={
-                    'FunctionName': initialize_events.function_name
-                }
-            ),
-            policy=cr.AwsCustomResourcePolicy.from_statements([
-                iam.PolicyStatement(
-                    actions=['lambda:InvokeFunction'],
-                    resources=[initialize_events.function_arn]
-                )
-            ]),
-            role=custom_resource_role
+        # Create a Lambda function to process the Events Table
+        process_events = lambda_.Function(
+            self, 'ProcessEventsLambda',
+            function_name='StJames-process-events',
+            runtime=lambda_.Runtime.PYTHON_3_8,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/lambda_/process_events'),
+            environment={
+                'TABLE_NAME': eventTable.table_name
+            },
+            timeout=Duration.seconds(30),
         )
 
+        # Grant the Lambda function read/write permissions to the table
+        eventTable.grant_read_write_data(process_events)
