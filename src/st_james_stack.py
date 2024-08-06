@@ -2,7 +2,8 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_s3_deployment as s3deploy,
     CfnOutput,
-    Stack
+    Stack,
+    Tags
 )
 from constructs import Construct
 from src.api_gateway.infrastructure import StJamesApiGateway
@@ -14,6 +15,9 @@ class StJamesStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        # Add a tag to the stack
+        Tags.of(self).add('Project', 'StJames')
 
         # Create the DynamoDB tables
         database = StJamesDatabase(self, "StJamesDatabase")
@@ -33,8 +37,3 @@ class StJamesStack(Stack):
         # Create the API Gateway for testing
         StJamesApiGateway(self, "StJamesApiGateway",
             post_tester = lambda_construct.post_tester)
-        
-        # Add tags to all resources in the stack
-        for child in self.node.children:
-            if hasattr(child, 'tags'):
-                child.tags.set_tag('Project', 'StJames')
