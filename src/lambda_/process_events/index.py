@@ -1,16 +1,45 @@
 import boto3
 import datetime
+import json
+import requests
 import os
 
-from boto3.dynamodb.conditions import Key, Attr
+from boto3.dynamodb.conditions import Key
+from bs4 import BeautifulSoup
+
+logged_in_to_gov = False
+gov_signin_url = os.environ['GOV_SIGNIN_URL']   
+gov_singin_id = os.environ['GOV_SIGNIN_ID']
+gov_signin_password = os.environ['GOV_SIGNIN_PASSWORD']
 
 def process_moms():
     # Stub function that currently returns False
     return False
 
+def log_in_to_gov():
+    response = requests.get(gov_signin_url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
+        script_tag = soup.find('script', {'type': 'application/json', 'class': 'joomla-script-options new'})
+        if script_tag:
+            json_data = json.loads(script_tag.string)
+            csrf_token = json_data['csrf.token']
+            print(f'CSRF Token: {csrf_token}')
+        else:
+            print('CSRF token not found.')
+
+    return True
+
 def process_gov():
-    # Stub function that currently returns False
-    return False
+    global logged_in_to_gov
+    if not logged_in_to_gov:
+        logged_in_to_gov = log_in_to_gov()
+
+    if logged_in_to_gov:
+        # Stub function that currently returns False
+        return False
+    else:
+        return False
 
 def process_sojourner():
     # Stub function that currently returns False

@@ -40,7 +40,10 @@ class StJamesLambda(Construct):
             handler='index.handler',
             code=lambda_.Code.from_asset('src/lambda_/process_events'),
             environment={
-                'TABLE_NAME': eventTable.table_name
+                'TABLE_NAME': eventTable.table_name,
+                'GOV_SIGNIN_URL': 'https://events.westchestergov.com/event-calendar-sign-in',   
+                'GOV_SIGNIN_ID': 'camryni',
+                'GOV_SIGNIN_PASSWORD': 'CamrynAdmin17'
             },
             timeout=Duration.seconds(30),
         )
