@@ -2,10 +2,10 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_s3_deployment as s3deploy,
     CfnOutput,
-    RemovalPolicy,
     Stack
 )
 from constructs import Construct
+from src.api_gateway.infrastructure import StJamesApiGateway
 from src.database.infrastructure import StJamesDatabase
 from src.lambda_.infrastructure import StJamesLambda
 from src.storage.infrastructure import StJamesStorage
@@ -22,7 +22,7 @@ class StJamesStack(Stack):
         storage = StJamesStorage(self, "StJamesStorage")
 
         # Create the Lambda functions
-        StJamesLambda(self, "StJamesLambda",
+        lambda_construct = StJamesLambda(self, "StJamesLambda",
             eventTable = database.eventsTable,
             dataBucket = storage.dataBucket,
             initialEvents = "initialData/events.json")
@@ -30,6 +30,10 @@ class StJamesStack(Stack):
          # Output the Events Table name
         CfnOutput(self, "StJamesEventTableName", value=database.eventsTable.table_name)
 
+        # Create the API Gateway for testing
+        StJamesApiGateway(self, "StJamesApiGateway",
+            post_tester = lambda_construct.post_tester)
+        
         # Add tags to all resources in the stack
         for child in self.node.children:
             if hasattr(child, 'tags'):

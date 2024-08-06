@@ -47,3 +47,13 @@ class StJamesLambda(Construct):
 
         # Grant the Lambda function read/write permissions to the table
         eventTable.grant_read_write_data(process_events)
+
+        # Create a Lambda function to simulate the websites
+        self.post_tester = lambda_.Function(
+            self, 'TestPosterLambda',
+            function_name='StJames-test-poster',
+            runtime=lambda_.Runtime.PYTHON_3_8,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/lambda_/test_poster'),
+            timeout=Duration.seconds(10),
+        )
