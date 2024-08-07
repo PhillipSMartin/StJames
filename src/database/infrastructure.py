@@ -14,6 +14,6 @@ class StJamesDatabase(Construct):
             table_name="StJamesEvents",
             partition_key=db.Attribute(name="access", type=db.AttributeType.STRING),
             sort_key=db.Attribute(name="date_id", type=db.AttributeType.STRING),
-            removal_policy=RemovalPolicy.DESTROY,
+            removal_policy=RemovalPolicy.RETAIN,
             billing_mode=db.BillingMode.PAY_PER_REQUEST
         )

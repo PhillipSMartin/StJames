@@ -8,3 +8,14 @@ __pycache__
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+*.dist-info/
+charset_normalizer/
+idna/
+requests/
+urllib3/
+soupsieve/
+bs4/
+certifi/
+bin/
+

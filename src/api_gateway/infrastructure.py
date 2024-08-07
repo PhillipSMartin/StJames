@@ -15,4 +15,4 @@ class StJamesApiGateway(Construct):
             proxy=False
         )
 
-        self.testApi.root.add_resource('test').add_method('POST')   
+        self.testApi.root.add_resource('test').add_method('POST') 
