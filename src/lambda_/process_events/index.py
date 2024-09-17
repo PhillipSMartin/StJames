@@ -7,18 +7,20 @@ import os
 from boto3.dynamodb.conditions import Key
 from bs4 import BeautifulSoup
 
-gov_login_status = 'not logged in'
-gov_signin_url = os.environ['GOV_SIGNIN_URL']   
+test_url = os.environ['TEST_URL']
+gov_url = os.eviron['GOV_URL']
+gov_signin_url = (test_url + 'test') if test_url else gov_url  
 gov_signin_id = os.environ['GOV_SIGNIN_ID']
 gov_signin_password = os.environ['GOV_SIGNIN_PASSWORD']
-test_url = os.environ['TEST_URL']
 
-def process_moms():
+gov_login_status = 'not logged in'
+
+def process_moms(item):
     # Stub function that currently returns False
     return False
 
 def log_in_to_gov():
-    response = requests.get(gov_signin_url)
+    response = requests.get(gov_url)
     if response.status_code == 200:
         csrf_token = None
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -48,33 +50,44 @@ def log_in_to_gov():
         }
 
         # Send the POST reqest
-        url = (test_url + 'test') if test_url else gov_signin_url
-        response = requests.post(url, data=payload, headers=headers)
+        response = requests.post(gov_url, data=payload, headers=headers)
         if response.status_code == 200:
-            print(f'Logged in to {url} successfully!')
+            print(f'Logged in to {gov_url} successfully!')
             return True
         else:
-            print(f'Failed to log in to {url}: status code {response.status_code}')
+            print(f'Failed to log in to {gov_url}: status code {response.status_code}')
             print(response.text)
 
     return False
 
-def process_gov():
+def process_gov(item):
     global gov_login_status
     if gov_login_status == 'not logged in' and gov_login_status != 'failed':
         gov_login_status = 'logged in' if log_in_to_gov() else 'failed'
 
     if gov_login_status == 'logged in':
-        # Stub function that currently returns False
+        payload = {
+            'Submit': '',
+            csrf_token: '1',  # CSRF token
+            'option': 'com_users',
+            'password': gov_signin_password,
+            'return': 'aW5kZXgucGhwp0I0ZW1pZD0xMTc=',
+            'task': 'user.login',
+            'username': gov_signin_id
+        }
+
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
         return False
     else:
         return False
 
-def process_sojourner():
+def process_sojourner(item):
     # Stub function that currently returns False
     return False
 
-def process_patch():
+def process_patch(item):
     # Stub function that currently returns False
     return False
 
@@ -88,7 +101,7 @@ def post_to_websites(item):
     modified = False
 
     if 'moms' in item['post']:
-        result = process_moms()
+        result = process_moms(item)
         print(f"process_moms returned: {result}")
 
         if result:
@@ -96,7 +109,7 @@ def post_to_websites(item):
             modified = True
 
     if 'gov' in item['post']:
-        result = process_gov()
+        result = process_gov(item)
         print(f"process_gov returned: {result}")
 
         if result:
@@ -104,7 +117,7 @@ def post_to_websites(item):
             modified = True
 
     if 'sojourner' in item['post']:
-        result = process_sojourner()
+        result = process_sojourner(item)
         print(f"process_sojourner returned: {result}")
 
         if result:
@@ -112,7 +125,7 @@ def post_to_websites(item):
             modified = True
 
     if 'patch' in item['post']:
-        result = process_patch()
+        result = process_patch(item)
         print(f"process_patch returned: {result}")
         
         if result:

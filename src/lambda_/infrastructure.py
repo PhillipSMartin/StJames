@@ -17,7 +17,7 @@ class StJamesLambdaProd(Construct):
         initialize_events = lambda_.Function(
             self, 'InitializeEventsLambda',
             function_name='StJames-initialize-events',
-            runtime=lambda_.Runtime.PYTHON_3_8,
+            runtime=lambda_.Runtime.PYTHON_3_9,
             handler='index.handler',
             code=lambda_.Code.from_asset('src/lambda_/initialize_events'),
             environment={
@@ -36,12 +36,12 @@ class StJamesLambdaProd(Construct):
         process_events = lambda_.Function(
             self, 'ProcessEventsLambda',
             function_name='StJames-process-events',
-            runtime=lambda_.Runtime.PYTHON_3_8,
+            runtime=lambda_.Runtime.PYTHON_3_9,
             handler='index.handler',
             code=lambda_.Code.from_asset('src/lambda_/process_events'),
             environment={
                 'TABLE_NAME': eventTable.table_name,
-                'GOV_SIGNIN_URL': 'https://events.westchestergov.com/event-calendar-sign-in',   
+                'GOV_URL': 'https://events.westchestergov.com/event-calendar-sign-in',   
                 'GOV_SIGNIN_ID': 'camryni',
                 'GOV_SIGNIN_PASSWORD': 'CamrynAdmin17',
                 'TEST_URL': testUrl
@@ -60,7 +60,7 @@ class StJamesLambdaTest(Construct):
         self.post_tester = lambda_.Function(
             self, 'TestPosterLambda',
             function_name='StJames-test-poster',
-            runtime=lambda_.Runtime.PYTHON_3_8,
+            runtime=lambda_.Runtime.PYTHON_3_9,
             handler='index.handler',
             code=lambda_.Code.from_asset('src/lambda_/test_poster'),
             timeout=Duration.seconds(10),
