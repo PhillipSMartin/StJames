@@ -66,19 +66,19 @@ def process_gov(item):
         gov_login_status = 'logged in' if log_in_to_gov() else 'failed'
 
     if gov_login_status == 'logged in':
-        payload = {
-            'Submit': '',
-            csrf_token: '1',  # CSRF token
-            'option': 'com_users',
-            'password': gov_signin_password,
-            'return': 'aW5kZXgucGhwp0I0ZW1pZD0xMTc=',
-            'task': 'user.login',
-            'username': gov_signin_id
-        }
+        # payload = {
+        #     'Submit': '',
+        #     csrf_token: '1',  # CSRF token
+        #     'option': 'com_users',
+        #     'password': gov_signin_password,
+        #     'return': 'aW5kZXgucGhwp0I0ZW1pZD0xMTc=',
+        #     'task': 'user.login',
+        #     'username': gov_signin_id
+        # }
 
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
+        # headers = {
+        #     'Content-Type': 'application/x-www-form-urlencoded'
+        # }
         return False
     else:
         return False
@@ -156,6 +156,8 @@ def handler(event, context):
                 # Update the item in DynamoDB
                 print(f"Updating: {item['title']}: posted={item['posted']}")
                 table.put_item(Item=item)
+            break # temporarily do only first item
+            
 
     return {
         'statusCode': 200,
