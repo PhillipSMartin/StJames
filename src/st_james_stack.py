@@ -6,7 +6,7 @@ from aws_cdk import (
 from constructs import Construct
 from src.api.infrastructure import StJamesApi
 from src.database.infrastructure import StJamesDatabase
-from src.compute.infrastructure import StJamesCompute, StJamesLambdaTest
+from src.compute.infrastructure import StJamesCompute
 from src.messaging.infrastructure import StJamesMessaging
 from src.storage.infrastructure import StJamesStorage
 
@@ -23,23 +23,21 @@ class StJamesStack(Stack):
 
         # Create the S3 bucket
         storage = StJamesStorage(self, "StJamesStorage")
-
-        # Create the Lambda function for testing
-        lambda_test = StJamesLambdaTest(self, "StJamesLambdaTest")
                                         
-        # Create the API Gateway
-        api = StJamesApi(self, "StJamesApiGateway",
-            post_events_handler = lambda_test.post_tester)
         
         # Create the SNS topic
         messaging = StJamesMessaging(self, "StJamesMessaging")
         
         # Create the Lambda functions
-        StJamesCompute(self, "StJamesLambdaProd",
-            eventTable = database.events_table,
-            dataBucket = storage.data_bucket,
-            initialEvents = "initialData/events.json",
-            testUrl = api.events_api.url)
+        compute = StJamesCompute(self, "StJamesLambdaProd",
+            events_table = database.events_table,
+            events_topic = messaging.events_topic,
+            data_bucket = storage.data_bucket,
+            initial_events = "initialData/events.json")
+        
+        # Create the API Gateway
+        api = StJamesApi(self, "StJamesApiGateway",
+            post_events_handler = compute.process_events)
 
         # Output the Events Table name
         CfnOutput(self, "EventTableName", 

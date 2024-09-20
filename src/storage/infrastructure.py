@@ -17,5 +17,5 @@ class StJamesStorage(Construct):
         # # Copy data to the S3 bucket to initialize the Events Table
         # s3deploy.BucketDeployment(self, "StJamesDataDeployment",
         #     sources=[s3deploy.Source.asset('data')],
-        #     destination_bucket=self.dataBucket,
+        #     destination_bucket=self.data_bucket,
         #     destination_key_prefix='initialData')
