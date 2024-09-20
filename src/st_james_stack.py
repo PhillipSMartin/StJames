@@ -1,14 +1,13 @@
 from aws_cdk import (
-    aws_s3 as s3,
-    aws_s3_deployment as s3deploy,
     CfnOutput,
     Stack,
     Tags
 )
 from constructs import Construct
-from src.api_gateway.infrastructure import StJamesApiGateway
+from src.api.infrastructure import StJamesApi
 from src.database.infrastructure import StJamesDatabase
-from src.lambda_.infrastructure import StJamesLambdaProd, StJamesLambdaTest
+from src.compute.infrastructure import StJamesCompute, StJamesLambdaTest
+from src.messaging.infrastructure import StJamesMessaging
 from src.storage.infrastructure import StJamesStorage
 
 class StJamesStack(Stack):
@@ -22,24 +21,27 @@ class StJamesStack(Stack):
         # Create the DynamoDB tables
         database = StJamesDatabase(self, "StJamesDatabase")
 
-        # Create and fill the S3 buckets (don't need this - already done)
+        # Create the S3 bucket
         storage = StJamesStorage(self, "StJamesStorage")
 
         # Create the Lambda function for testing
         lambda_test = StJamesLambdaTest(self, "StJamesLambdaTest")
                                         
-        # Create the API Gateway for testing
-        api = StJamesApiGateway(self, "StJamesApiGateway",
+        # Create the API Gateway
+        api = StJamesApi(self, "StJamesApiGateway",
             post_events_handler = lambda_test.post_tester)
         
+        # Create the SNS topic
+        messaging = StJamesMessaging(self, "StJamesMessaging")
+        
         # Create the Lambda functions
-        StJamesLambdaProd(self, "StJamesLambdaProd",
-            eventTable = database.eventsTable,
-            dataBucket = storage.dataBucket,
+        StJamesCompute(self, "StJamesLambdaProd",
+            eventTable = database.events_table,
+            dataBucket = storage.data_bucket,
             initialEvents = "initialData/events.json",
-            testUrl = api.testApi.url)
+            testUrl = api.events_api.url)
 
         # Output the Events Table name
         CfnOutput(self, "EventTableName", 
-            value=database.eventsTable.table_name,
+            value=database.events_table.table_name,
             export_name="StJamesEventTableName")

@@ -4,7 +4,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-class StJamesLambdaProd(Construct):
+class StJamesCompute(Construct):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id)
 
@@ -19,7 +19,7 @@ class StJamesLambdaProd(Construct):
             function_name='StJames-initialize-events',
             runtime=lambda_.Runtime.PYTHON_3_9,
             handler='index.handler',
-            code=lambda_.Code.from_asset('src/lambda_/initialize_events'),
+            code=lambda_.Code.from_asset('src/compute/initialize_events'),
             environment={
                 'TABLE_NAME': eventTable.table_name,
                 'BUCKET_NAME': dataBucket.bucket_name,
@@ -38,7 +38,7 @@ class StJamesLambdaProd(Construct):
             function_name='StJames-process-events',
             runtime=lambda_.Runtime.PYTHON_3_9,
             handler='index.handler',
-            code=lambda_.Code.from_asset('src/lambda_/process_events'),
+            code=lambda_.Code.from_asset('src/compute/process_events'),
             environment={
                 'TABLE_NAME': eventTable.table_name,
                 'GOV_URL': 'https://events.westchestergov.com/event-calendar-sign-in',   
@@ -62,6 +62,6 @@ class StJamesLambdaTest(Construct):
             function_name='StJames-test-poster',
             runtime=lambda_.Runtime.PYTHON_3_9,
             handler='index.handler',
-            code=lambda_.Code.from_asset('src/lambda_/test_poster'),
+            code=lambda_.Code.from_asset('src/compute/test_poster'),
             timeout=Duration.seconds(10),
         )

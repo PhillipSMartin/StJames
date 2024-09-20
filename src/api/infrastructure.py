@@ -4,15 +4,15 @@ from aws_cdk import (
 from aws_cdk.aws_lambda import Function
 from constructs import Construct
 
-class StJamesApiGateway(Construct):
+class StJamesApi(Construct):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id)
 
         post_events_handler = kwargs['post_events_handler']
-        self.testApi = apigw.LambdaRestApi(
-            self, 'StJamesEventsApi',
+        self.events_api = apigw.LambdaRestApi(
+            self, 'EventsApi',
             handler=post_events_handler,
             proxy=False
         )
 
-        self.testApi.root.add_resource('post-events').add_method('POST') 
+        self.events_api.root.add_resource('post-events').add_method('POST') 

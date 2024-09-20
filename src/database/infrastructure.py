@@ -9,7 +9,7 @@ class StJamesDatabase(Construct):
         super().__init__(scope, id)
 
         # Create the DynamoDB table to hold events
-        self.eventsTable = db.Table(
+        self.events_table = db.Table(
             self, "EventsTable",
             table_name="StJamesEvents",
             partition_key=db.Attribute(name="access", type=db.AttributeType.STRING),
