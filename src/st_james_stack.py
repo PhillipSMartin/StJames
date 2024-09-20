@@ -30,7 +30,7 @@ class StJamesStack(Stack):
                                         
         # Create the API Gateway for testing
         api = StJamesApiGateway(self, "StJamesApiGateway",
-            post_tester = lambda_test.post_tester)
+            post_events_handler = lambda_test.post_tester)
         
         # Create the Lambda functions
         StJamesLambdaProd(self, "StJamesLambdaProd",

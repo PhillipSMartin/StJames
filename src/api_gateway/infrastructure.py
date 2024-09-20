@@ -8,11 +8,11 @@ class StJamesApiGateway(Construct):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id)
 
-        post_tester = kwargs['post_tester']
+        post_events_handler = kwargs['post_events_handler']
         self.testApi = apigw.LambdaRestApi(
-            self, 'StJamesTestApi',
-            handler=post_tester,
+            self, 'StJamesEventsApi',
+            handler=post_events_handler,
             proxy=False
         )
 
-        self.testApi.root.add_resource('test').add_method('POST') 
+        self.testApi.root.add_resource('post-events').add_method('POST') 
