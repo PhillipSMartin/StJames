@@ -55,6 +55,9 @@ def post_to_sns(item):
     topic_arn = os.environ['TOPIC_ARN']  
     
     # Publish the message to the SNS topic
+    if 'version' in item:
+        del item['version']
+        
     response = sns.publish(
         TopicArn=topic_arn,
         Message=json.dumps(item),
