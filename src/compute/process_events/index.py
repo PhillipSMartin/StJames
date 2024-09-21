@@ -6,31 +6,47 @@ import os
 from boto3.dynamodb.conditions import Key
 
 def handler(event, context):
-    # Initialize DynamoDB client
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table(os.environ['TABLE_NAME'])
+    try:
+        # Initialize DynamoDB client
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table(os.environ['TABLE_NAME'])
 
-    # Get today's date in yyyy-mm-dd format
-    today = datetime.date.today().isoformat()
+        # Get today's date in yyyy-mm-dd format
+        today = datetime.date.today().isoformat()
 
-    # Query items with date greater than today
-    response = table.query(
-        KeyConditionExpression=Key('access').eq('public') & Key('date_id').gt(today)
-    )
+        # Query items with date greater than today
+        response = table.query(
+            KeyConditionExpression=Key('access').eq('public') & Key('date_id').gt(today)
+        )
 
-    for item in response['Items']:
-        if 'post' in item and isinstance(item['post'], list) and item['post']:
-            print(f"Processing: {item['title']}: post={item['post']}")
+        for item in response['Items']:
+            if 'post' in item and isinstance(item['post'], list) and item['post']:
+                print(f"Processing: {item['title']}: post={item['post']}")
 
-            # Post messages to SNS topic
-            post_to_sns(item)
-            break # temporarily do only first item
-            
-    return {
-        'statusCode': 200,
-        'body': 'Processing completed successfully'
-    }
-
+                # Post messages to SNS topic
+                post_to_sns(item)
+                break # temporarily do only first item
+                
+        return {
+            'statusCode': 200,
+            'body': 'Processing completed successfully'
+        }
+    
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON: {e}")
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'message': 'Invalid JSON in event'})
+        }
+    
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'Internal server error'})
+        }
+    
+    
 def post_to_sns(item):
     # Initialize SNS client
     sns = boto3.client('sns')

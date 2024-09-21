@@ -45,15 +45,12 @@ class StJamesCompute(Construct):
             code=lambda_.Code.from_asset('src/compute/process_events'),
             environment={
                 'TABLE_NAME': events_table.table_name,
-                'TOPIC_ARN': events_topic.topic_arn,
-                # 'GOV_URL': 'https://events.westchestergov.com/event-calendar-sign-in',   
-                # 'GOV_SIGNIN_ID': 'camryni',
-                # 'GOV_SIGNIN_PASSWORD': 'CamrynAdmin17',
+                'TOPIC_ARN': events_topic.topic_arn
             },
             timeout=Duration.seconds(30),
         )
 
-        # Grant the Lambda function read/write permissions to the table
+        # Grant the Lambda function necessary permissions
         events_table.grant_read_data(self.process_events)
         events_topic.grant_publish(self.process_events)
 
@@ -65,6 +62,7 @@ class StJamesCompute(Construct):
             handler='index.handler',
             code=lambda_.Code.from_asset('src/compute/post_to_patch'),
             environment={
+                'TABLE_NAME': events_table.table_name
             },
             timeout=Duration.seconds(10),
         )
@@ -80,3 +78,93 @@ class StJamesCompute(Construct):
                 }            
             )
         )
+
+        # Grant the Lambda function necessary permissions
+        events_table.grant_read_write_data(self.post_to_patch)
+
+        # Create a Lambda function to post to the moms site
+        self.post_to_moms = lambda_.Function(
+            self, 'PostToMomsLambda',
+            function_name='StJames-post-to-moms',
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/compute/post_to_moms'),
+            environment={
+                'TABLE_NAME': events_table.table_name
+            },
+            timeout=Duration.seconds(10),
+        )
+
+        # Subscribe the post_to_moms Lambda to the events_topic
+        events_topic.add_subscription(
+            subscriptions.LambdaSubscription(
+                self.post_to_moms,
+                filter_policy_with_message_body={
+                    'post': sns.FilterOrPolicy.filter(sns.SubscriptionFilter.string_filter(
+                        allowlist=['moms']
+                    ))
+                }            
+            )
+        )
+
+        # Grant the Lambda function necessary permissions
+        events_table.grant_read_write_data(self.post_to_moms)
+
+        # Create a Lambda function to post to the sojourner site
+        self.post_to_sojourner = lambda_.Function(
+            self, 'PostToSojournerLambda',
+            function_name='StJames-post-to-sojourner',
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/compute/post_to_sojourner'),
+            environment={
+                'TABLE_NAME': events_table.table_name
+            },
+            timeout=Duration.seconds(10),
+        )
+
+        # Subscribe the post_to_sojourner Lambda to the events_topic
+        events_topic.add_subscription(
+            subscriptions.LambdaSubscription(
+                self.post_to_sojourner,
+                filter_policy_with_message_body={
+                    'post': sns.FilterOrPolicy.filter(sns.SubscriptionFilter.string_filter(
+                        allowlist=['sojourner']
+                    ))
+                }            
+            )
+        )
+
+        # Grant the Lambda function necessary permissions
+        events_table.grant_read_write_data(self.post_to_sojourner)
+
+        # # Create a Lambda function to post to the gov site
+        # self.post_to_patch = lambda_.Function(
+        #     self, 'PostToGovLambda',
+        #     function_name='StJames-post-to-patch',
+        #     runtime=lambda_.Runtime.PYTHON_3_9,
+        #     handler='index.handler',
+        #     code=lambda_.Code.from_asset('src/compute/post_to_gov'),
+            # environment={
+            #     'TABLE_NAME': events_table.table_name,
+            #     'GOV_URL': 'https://events.westchestergov.com/event-calendar-sign-in',   
+            #     'GOV_SIGNIN_ID'': 'camryni',
+            #     'GOV_SIGNIN_PASSWORD': 'CamrynAdmin17',
+            # },
+        #     timeout=Duration.seconds(10),
+        # )
+
+        # # Subscribe the post_to_gov Lambda to the events_topic
+        # events_topic.add_subscription(
+        #     subscriptions.LambdaSubscription(
+        #         self.post_to_gov,
+        #         filter_policy_with_message_body={
+        #             'post': sns.FilterOrPolicy.filter(sns.SubscriptionFilter.string_filter(
+        #                 allowlist=['gov']
+        #             ))
+        #         }            
+        #     )
+        # )        
+
+        # # Grant the Lambda function necessary permissions
+        # events_table.grant_read_write_data(self.post_to_gov)
