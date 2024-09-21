@@ -6,81 +6,112 @@ from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
 def handler(event, context):
-    try:
-        message = json.loads(event["Records"][0]["Sns"]["Message"])
-        print("Request:", json.dumps(message))
 
-        status_code = 200
-        body = f"Successfully posted: { message['title'] }"
-        
-        # Find DynamoDB record
+    events_posted = 0
+    events_failed = 0
+
+    try:
         dynamodb = boto3.resource('dynamodb')
         table = dynamodb.Table(os.environ['TABLE_NAME'])
 
-        retry = True
-        retry_count = 0
-        while retry and retry_count < 10: 
-            retry = False
-            response = table.query(
-                KeyConditionExpression=Key('access').eq('public') & Key('date_id').eq(message['date_id'])
-            )
+        for record in event["Records"]:
+            posted = False
+            try:
+                message = json.loads(record["Sns"]["Message"])
+                print("Request:", json.dumps(message))
 
-            if response['Items']:
-                item = response['Items'][0]
-                current_version = item.get('version', 0)
+                if update_status(table, message, 'posting'):
 
-                if 'post' in item and isinstance(item['post'], list) and 'patch' in item['post']:
-                    print(f"Posting: {message['title']}")
+                    # TODO: Post to Patch
 
-                    item['post'].remove('patch')
-                    if 'posted' not in item:
-                        item['posted'] = []
-                    item['posted'].append('patch') 
+                    posted = True
+                    print(f"Posted: { message['title'] }")
 
-                    try:
-                        table.put_item(Item={
-                                **item,
-                                'version': current_version + 1
-                            },
-                            ConditionExpression='attribute_not_exists(version) OR version = :current_version',
-                            ExpressionAttributeValues={':current_version': current_version}
-                        ) 
-                    except ClientError as e:
-                        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-                            retry = True
-                            retry_count += 1
-                        else:
-                            raise
- 
-                else:
-                    status_code = 400
-                    body = f"Error: { item['title'] } - already posted"
+            except Exception as e:
+                print(f"Failed to post: { message['title'] }")
+                print(e)
 
+            if posted:
+                events_posted += 1
+                update_status(table, message, 'posted')
             else:
-                status_code = 400
-                body = f"Error - not found: { message['date_id'] }"
+                events_failed += 1
+                update_status(table, message, 'post')
 
-        # If retry is True, we tried to mark the item as posted but failed.
-        if retry:
-            status_code = 500
-            body = f"Error - unable to update DynamoDB table: { message['date_id'] }"
-        
+        body = f"Posted {events_posted} events, failed to post {events_failed} events"
         print(body)
+
         return {
-            'statusCode': status_code,
-            'body': json.dumps({'message': body })
+            'statusCode': 200,
+            'body': json.dumps({ 'message': body })
         }
-                   
+                       
     except json.JSONDecodeError as e:
         print(f"Error decoding JSON: {e}")
         return {
             'statusCode': 400,
-            'body': json.dumps({'message': 'Invalid JSON in event'})
+            'body': json.dumps({ 'message': 'Invalid JSON in event' })
         }
     
     except Exception as e:
         print(f"Unexpected error: {e}")
         return {
             'statusCode': 500,
-            'body': json.dumps({'message': 'Internal server error'})
+            'body': json.dumps({ 'message': 'Internal error' })
         }
+
+# Update DynamoDB record with status
+def update_status(table, message, status): 
+    updated = False
+    retry = True
+    retry_count = 0
+
+    try:       
+        print( f"Updating { message['title'] } to { status }" )
+        while retry and retry_count < 10: 
+            retry = False
+            retry_count += 1
+
+            response = table.query(
+                KeyConditionExpression=Key('access').eq('public') & Key('date_id').eq(message["date_id"])
+            )
+
+            if response['Items']:
+                item = response['Items'][0]
+                current_version = int( item.get('version', 0) )
+
+                if 'post' in item and isinstance(item['post'], list) and 'patch' in item['post']:
+                   item['post'].remove('patch')
+                if 'posting' in item and isinstance(item['posting'], list) and 'patch' in item['posting']:
+                   item['posting'].remove('patch')
+
+                if status not in item:
+                    item[status] = []
+                item[status].append('patch') 
+
+                try:
+                    table.put_item(Item={
+                            **item,
+                            'version': current_version + 1
+                        },
+                        ConditionExpression='attribute_not_exists(version) OR version = :current_version',
+                        ExpressionAttributeValues={':current_version': current_version}
+                    ) 
+                    updated = True
+
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                        print(f"Conflict detected on attempt {retry_count}. Retrying...")
+                        retry = True
+                    else:
+                        raise
+
+    except Exception as e:
+        print(f"Error updating status: {e}")
+
+    if updated:
+        print(f"Successfully updated { message['title'] } to { status }")
+    else:
+        print(f"Failed to update { message['title'] } to { status }")
+    
+    return updated
