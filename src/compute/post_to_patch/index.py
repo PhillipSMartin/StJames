@@ -13,7 +13,14 @@ from botocore.exceptions import ClientError
 website = 'patch'
 access_token = None
 
+current_item = None
+current_status = None
+current_version = 0
+
 def handler(event, context):
+
+    global current_item
+    global current_status
 
     events_posted = 0
     events_failed = 0
@@ -30,8 +37,12 @@ def handler(event, context):
                 message = json.loads(record["Sns"]["Message"])
                 print("Request:", json.dumps(message))
 
-                if update_status(table, message, 'posting'):
+                if not ( get_item(table, message) and current_status == 'post' ):
+                    print( "Status of event is not 'post', skipping" )
+                    events_failed += 1
+                    continue
 
+                if update_status(table, message, 'posting'):
                     if post_to_patch(message):
                         posted = True
                         print(f"Posted: { message['title'] }")
@@ -45,7 +56,8 @@ def handler(event, context):
                 update_status(table, message, 'posted')
             else:
                 events_failed += 1
-                update_status(table, message, 'post')
+                if current_status == 'posting':
+                    update_status(table, message, 'post')
 
         body = f"Posted {events_posted} events, failed to post {events_failed} events"
         print(body)
@@ -69,63 +81,95 @@ def handler(event, context):
             'body': json.dumps({ 'message': 'Internal error' })
         }
 
-# Update DynamoDB record with status
-def update_status(table, message, status): 
+# update item, status, and version
+def get_item(table, message):
+    global current_item
+    global current_status
+    global current_version
 
-    # for the time being, turn this off
+    response = table.get_item(
+        Key={
+            'access': 'public',
+            'date_id': message['date_id']
+        },
+        ConsistentRead=True
+    )
+
+    current_item = response.get('Item', None)
+    if not current_item:
+        print(f"No item found for { message['title'] }")
+        return False
+    
+    # save the current version and remove it from the item - wee will update the version later
+    current_version = int(current_item.get('version', 0))
+    if 'version' in current_item:
+        del current_item['version']
+
+    # save the current status
+    if 'post' in current_item and isinstance(current_item['post'], list) and website in current_item['post']:
+        current_status = 'post'
+    elif 'posting' in current_item and isinstance(current_item['posting'], list) and website in current_item['posting']:
+        current_status = 'posting'
+    elif 'posted' in current_item and isinstance(current_item['posted'], list) and website in current_item['posted']:
+        current_status = 'posted'
+    else:
+        print(f"No status found for { message['title'] }")
+        return False
+    
     return True
 
+# Update DynamoDB record status
+def update_status(table, message, new_status): 
+    global current_item
+    global current_status
+    global current_version
+
     updated = False
-    retry = True
     retry_count = 0
 
     try:       
-        print( f"Updating { message['title'] } to { status }" )
-        while retry and retry_count < 10: 
-            retry = False
+        print( f"Updating { message['title'] } to { new_status }" )
+
+        while retry_count < 10 and not updated: 
             retry_count += 1
+ 
+            # clear status
+            if 'post' in current_item and isinstance(current_item['post'], list) and website in current_item['post']:
+                current_item['post'].remove(website)
+            if 'posting' in current_item and isinstance(current_item['posting'], list) and website in current_item['posting']:
+                current_item['posting'].remove(website)
+            if 'posted' in current_item and isinstance(current_item['posted'], list) and website in current_item['posted']:
+                current_item['posted'].remove(website)
 
-            response = table.query(
-                KeyConditionExpression=Key('access').eq('public') & Key('date_id').eq(message["date_id"])
-            )
+            # add the new status
+            if new_status not in current_item:
+                current_item[new_status] = []
+            current_item[new_status].append(website) 
 
-            if response['Items']:
-                item = response['Items'][0]
-                current_version = int( item.get('version', 0) )
+            try:
+                table.put_item(Item={
+                        **current_item,
+                        'version': current_version + 1
+                    },
+                    ConditionExpression='attribute_not_exists(version) OR version = :current_version',
+                    ExpressionAttributeValues={':current_version': current_version}
+                ) 
+                updated = True
+                current_version += 1
+                current_status = new_status
 
-                if 'post' in item and isinstance(item['post'], list) and website in item['post']:
-                   item['post'].remove(website)
-                if 'posting' in item and isinstance(item['posting'], list) and website in item['posting']:
-                   item['posting'].remove(website)
-
-                if status not in item:
-                    item[status] = []
-                item[status].append(website) 
-
-                try:
-                    table.put_item(Item={
-                            **item,
-                            'version': current_version + 1
-                        },
-                        ConditionExpression='attribute_not_exists(version) OR version = :current_version',
-                        ExpressionAttributeValues={':current_version': current_version}
-                    ) 
-                    updated = True
-
-                except ClientError as e:
-                    if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-                        print(f"Conflict detected on attempt {retry_count}. Retrying...")
-                        retry = True
-                    else:
-                        raise
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                    print(f"Conflict detected on attempt {retry_count}. Retrying...")
+                    get_item( table, message )  
+                else:
+                    raise
 
     except Exception as e:
         print(f"Error updating status: {e}")
 
-    if updated:
-        print(f"Successfully updated { message['title'] } to { status }")
-    else:
-        print(f"Failed to update { message['title'] } to { status }")
+    if not updated:
+        print(f"Failed to update { message['title'] } to { new_status }")
     
     return updated
 
