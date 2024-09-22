@@ -1,9 +1,17 @@
 import boto3
 import json
 import os
+import pytz
+import requests
+
+from datetime import datetime
+
 
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
+
+website = 'patch'
+access_token = None
 
 def handler(event, context):
 
@@ -14,6 +22,8 @@ def handler(event, context):
         dynamodb = boto3.resource('dynamodb')
         table = dynamodb.Table(os.environ['TABLE_NAME'])
 
+        # if login_to_patch():
+
         for record in event["Records"]:
             posted = False
             try:
@@ -22,10 +32,9 @@ def handler(event, context):
 
                 if update_status(table, message, 'posting'):
 
-                    # TODO: Post to Patch
-
-                    posted = True
-                    print(f"Posted: { message['title'] }")
+                    if post_to_patch(message):
+                        posted = True
+                        print(f"Posted: { message['title'] }")
 
             except Exception as e:
                 print(f"Failed to post: { message['title'] }")
@@ -62,6 +71,10 @@ def handler(event, context):
 
 # Update DynamoDB record with status
 def update_status(table, message, status): 
+
+    # for the time being, turn this off
+    return True
+
     updated = False
     retry = True
     retry_count = 0
@@ -80,14 +93,14 @@ def update_status(table, message, status):
                 item = response['Items'][0]
                 current_version = int( item.get('version', 0) )
 
-                if 'post' in item and isinstance(item['post'], list) and 'patch' in item['post']:
-                   item['post'].remove('patch')
-                if 'posting' in item and isinstance(item['posting'], list) and 'patch' in item['posting']:
-                   item['posting'].remove('patch')
+                if 'post' in item and isinstance(item['post'], list) and website in item['post']:
+                   item['post'].remove(website)
+                if 'posting' in item and isinstance(item['posting'], list) and website in item['posting']:
+                   item['posting'].remove(website)
 
                 if status not in item:
                     item[status] = []
-                item[status].append('patch') 
+                item[status].append(website) 
 
                 try:
                     table.put_item(Item={
@@ -115,3 +128,97 @@ def update_status(table, message, status):
         print(f"Failed to update { message['title'] } to { status }")
     
     return updated
+
+def eastern_to_epoch(date_str, time_str):
+    # Combine date and time strings
+    datetime_str = f"{date_str} {time_str}"
+    
+    # Parse the datetime string
+    dt = datetime.strptime(datetime_str, "%Y-%m-%d %I:%M %p")
+    
+    # Set the timezone to Eastern Time
+    eastern = pytz.timezone('US/Eastern')
+    dt_with_tz = eastern.localize(dt)
+    
+    # Convert to UTC
+    utc_time = dt_with_tz.astimezone(pytz.UTC)
+    
+    # Convert to Unix epoch time
+    epoch_time = int(utc_time.timestamp())
+    
+    return epoch_time
+
+
+def login_to_patch():
+    global access_token
+
+    url = "https://pep.patchapi.io/api/authn/token"
+    payload = {
+        "username": "07_topper_sights@icloud.com",
+        "password": "&g$DdCXPgj8A55G3"
+    }
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        access_token = data['data']['access_token']
+        return True
+    
+    else:
+        print(f"Failed to obtain access token. Status code: {response.status_code}")
+        print(f"Response: {response.text}")
+        return False
+
+def post_to_patch(message):    
+    date_str = message['date_id'].split('#')[0]
+    epoch_time = eastern_to_epoch(date_str, message['time'])
+
+    url = "https://api.patch.com/calendar/write-api/event"  
+    payload = {
+        "eventDateEpoch": epoch_time,
+        "eventType": "free",
+        "title": message['title'],
+        "contentHtml": f"<p>{ message['description'] }</p>",
+        "patchId": "37",
+        "eventAddress": {
+            "country":"US",
+            "state":"NY",
+            "locality":"Scarsdale",
+            "postalCode":"10583",
+            "streetAddress":"10 Church Ln",
+            "premise":"",
+            "name":"The Church of St. James the Less"
+        },
+        "imageUrls": [
+            "https://stjames-data-pm186.s3.amazonaws.com/SJL+logo.jpg"
+        ],
+        "eventLocation": {
+            "type":"Point",
+            "coordinates":[-73.8000084,40.98955369999999]
+        },
+        "imageValidation": [
+            {
+                "image_filename": "SJL logo.jpg",
+                "image_src": "",
+                "image_suspect": 0,
+                "image_url": "https://stjames-data-pm186.s3.amazonaws.com/SJL+logo.jpg"
+            }
+        ]
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Patch-Authorization": f"Bearer {access_token}"
+    }
+
+    print(f"Payload: { payload }")
+    print(f"Headers: { headers }")
+
+    return True
+        
+
+

@@ -18,4 +18,5 @@ soupsieve/
 bs4/
 certifi/
 bin/
+pytz/
 
