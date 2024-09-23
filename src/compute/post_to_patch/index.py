@@ -227,22 +227,17 @@ def login_to_website():
         "Content-Type": "application/json"
     }
 
-    print(f"Payload: { payload }")
-    print(f"Headers: { headers }")
-    access_token = 'abcdef'
-    return True
-
-    # response = requests.post(login_url, json=payload, headers=headers)
+    response = requests.post(login_url, json=payload, headers=headers)
     
-    # if response.status_code == 200:
-    #     data = response.json()
-    #     access_token = data['data']['access_token']
-    #     return True
+    if response.status_code == 200:
+        data = response.json()
+        access_token = data['data']['access_token']
+        return True
     
-    # else:
-    #     print(f"Failed to obtain access token. Status code: {response.status_code}")
-    #     print(f"Response: {response.text}")
-    #     return False
+    else:
+        print(f"Failed to obtain access token. Status code: {response.status_code}")
+        print(f"Response: {response.text}")
+        return False
 
 def post_to_website(message):    
     date_str = message['date_id'].split('#')[0]
@@ -288,7 +283,16 @@ def post_to_website(message):
     print(f"Payload: { payload }")
     print(f"Headers: { headers }")
 
-    return True
+    response = requests.post(post_url, json=payload, headers=headers)
+    
+    if response.status_code == 200:
+        print("Post successful")
+        return True
+    
+    else:
+        print(f"Post failed: {response.status_code}")
+        print(f"Response: {response.text}")
+        return False
         
 
 
