@@ -107,10 +107,19 @@ class StJamesCompute(Construct):
             handler='index.handler',
             code=lambda_.Code.from_asset('src/compute/post_to_moms'),
             environment={
-                'TABLE_NAME': events_table.table_name
+                'TABLE_NAME': events_table.table_name,
+                'SECRET_NAME': 'MomsCredentials',
+                'REGION_NAME': aws_region,
+                'URL': "https://tockify.com/api/interim/submitEvent/94489701c7c811e5ba094b4c274892ab"
             },
             timeout=Duration.seconds(30),
         )
+
+        moms_secret_access_policy = iam.PolicyStatement(
+            actions=['secretsmanager:GetSecretValue'],
+            resources=['arn:aws:secretsmanager:' + aws_region + ':' + aws_account + ':secret:MomsCredentials-7DRJB1']
+        )
+        self.post_to_moms.add_to_role_policy(moms_secret_access_policy)       
 
         # Subscribe the post_to_moms Lambda to the events_topic
         events_topic.add_subscription(

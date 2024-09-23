@@ -1,7 +1,6 @@
 import boto3
 import json
 import os
-import pytz
 import re
 import requests
 
@@ -173,25 +172,6 @@ def update_status(table, message, new_status):
     
     return updated
 
-def eastern_to_epoch(date_str, time_str):
-    # Combine date and time strings
-    datetime_str = f"{date_str} {time_str}"
-    
-    # Parse the datetime string
-    dt = datetime.strptime(datetime_str, "%Y-%m-%d %I:%M %p")
-    
-    # Set the timezone to Eastern Time
-    eastern = pytz.timezone('US/Eastern')
-    dt_with_tz = eastern.localize(dt)
-    
-    # Convert to UTC
-    utc_time = dt_with_tz.astimezone(pytz.UTC)
-    
-    # Convert to Unix epoch time
-    epoch_time = int(utc_time.timestamp())
-    
-    return epoch_time
-
 def get_secret():
     secret_name = os.environ.get('SECRET_NAME')
     region_name = os.environ.get('REGION_NAME')
@@ -272,7 +252,6 @@ def get_form_values():
 def post_to_website(message, form_values):    
     date_str = message['date_id'].split('#')[0]
     date_and_time = date_str + ' ' + message['time']
-    epoch_time = eastern_to_epoch(date_str, message['time'])
     secret = get_secret()
 
     payload = {
