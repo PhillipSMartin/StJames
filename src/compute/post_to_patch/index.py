@@ -17,6 +17,9 @@ current_item = None
 current_status = None
 current_version = 0
 
+login_url = os.getenv('LOGIN_URL')
+post_url = os.getenv('POST_URL')
+
 def handler(event, context):
 
     global current_item
@@ -29,35 +32,34 @@ def handler(event, context):
         dynamodb = boto3.resource('dynamodb')
         table = dynamodb.Table(os.environ['TABLE_NAME'])
 
-        # if login_to_patch():
+        if login_to_website():
+            for record in event["Records"]:
+                posted = False
+                try:
+                    message = json.loads(record["Sns"]["Message"])
+                    print("Request:", json.dumps(message))
 
-        for record in event["Records"]:
-            posted = False
-            try:
-                message = json.loads(record["Sns"]["Message"])
-                print("Request:", json.dumps(message))
+                    if not ( get_item(table, message) and current_status == 'post' ):
+                        print( "Status of event is not 'post', skipping" )
+                        events_failed += 1
+                        continue
 
-                if not ( get_item(table, message) and current_status == 'post' ):
-                    print( "Status of event is not 'post', skipping" )
+                    if update_status(table, message, 'posting'):
+                        if post_to_website(message):
+                            posted = True
+                            print(f"Posted: { message['title'] }")
+
+                except Exception as e:
+                    print(f"Failed to post: { message['title'] }")
+                    print(e)
+
+                if posted:
+                    events_posted += 1
+                    update_status(table, message, 'posted')
+                else:
                     events_failed += 1
-                    continue
-
-                if update_status(table, message, 'posting'):
-                    if post_to_patch(message):
-                        posted = True
-                        print(f"Posted: { message['title'] }")
-
-            except Exception as e:
-                print(f"Failed to post: { message['title'] }")
-                print(e)
-
-            if posted:
-                events_posted += 1
-                update_status(table, message, 'posted')
-            else:
-                events_failed += 1
-                if current_status == 'posting':
-                    update_status(table, message, 'post')
+                    if current_status == 'posting':
+                        update_status(table, message, 'post')
 
         body = f"Posted {events_posted} events, failed to post {events_failed} events"
         print(body)
@@ -66,7 +68,7 @@ def handler(event, context):
             'statusCode': 200,
             'body': json.dumps({ 'message': body })
         }
-                       
+                    
     except json.JSONDecodeError as e:
         print(f"Error decoding JSON: {e}")
         return {
@@ -192,36 +194,60 @@ def eastern_to_epoch(date_str, time_str):
     
     return epoch_time
 
+def get_secret():
+    secret_name = os.environ.get('SECRET_NAME')
+    region_name = os.environ.get('REGION_NAME')
 
-def login_to_patch():
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        raise e
+
+    secret = json.loads(get_secret_value_response['SecretString'])
+    return secret
+
+
+def login_to_website():
     global access_token
-
-    url = "https://pep.patchapi.io/api/authn/token"
+    
+    secret = get_secret()
     payload = {
-        "username": "07_topper_sights@icloud.com",
-        "password": "&g$DdCXPgj8A55G3"
+        "username": secret['username'],
+        "password": secret['password']
     }
     headers = {
         "Content-Type": "application/json"
     }
 
-    response = requests.post(url, json=payload, headers=headers)
-    
-    if response.status_code == 200:
-        data = response.json()
-        access_token = data['data']['access_token']
-        return True
-    
-    else:
-        print(f"Failed to obtain access token. Status code: {response.status_code}")
-        print(f"Response: {response.text}")
-        return False
+    print(f"Payload: { payload }")
+    print(f"Headers: { headers }")
+    access_token = 'abcdef'
+    return True
 
-def post_to_patch(message):    
+    # response = requests.post(login_url, json=payload, headers=headers)
+    
+    # if response.status_code == 200:
+    #     data = response.json()
+    #     access_token = data['data']['access_token']
+    #     return True
+    
+    # else:
+    #     print(f"Failed to obtain access token. Status code: {response.status_code}")
+    #     print(f"Response: {response.text}")
+    #     return False
+
+def post_to_website(message):    
     date_str = message['date_id'].split('#')[0]
     epoch_time = eastern_to_epoch(date_str, message['time'])
 
-    url = "https://api.patch.com/calendar/write-api/event"  
     payload = {
         "eventDateEpoch": epoch_time,
         "eventType": "free",

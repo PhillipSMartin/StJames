@@ -1,15 +1,22 @@
+import os
+
 from aws_cdk import (
     aws_iam as iam,
     aws_lambda as lambda_,
     aws_sns as sns,
     aws_sns_subscriptions as subscriptions,
-    Duration
+    Duration,
+    Stack
 )
 from constructs import Construct
+
 
 class StJamesCompute(Construct):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id)
+
+        aws_region  = Stack.of(self).region
+        aws_account = Stack.of(self).account
 
         events_table = kwargs['events_table']
         events_topic = kwargs['events_topic']
@@ -62,10 +69,20 @@ class StJamesCompute(Construct):
             handler='index.handler',
             code=lambda_.Code.from_asset('src/compute/post_to_patch'),
             environment={
-                'TABLE_NAME': events_table.table_name
+                'TABLE_NAME': events_table.table_name,
+                'LOGIN_URL': "https://pep.patchapi.io/api/authn/token",
+                'POST_URL': "https://api.patch.com/calendar/write-api/event",
+                'SECRET_NAME': 'PatchCredentials',
+                'REGION_NAME': aws_region
             },
             timeout=Duration.seconds(10),
         )
+
+        secret_access_policy = iam.PolicyStatement(
+            actions=['secretsmanager:GetSecretValue'],
+            resources=['arn:aws:secretsmanager:' + aws_region + ':' + aws_account + ':secret:PatchCredentials-T8SdBn']
+        )
+        self.post_to_patch.add_to_role_policy(secret_access_policy)
 
         # Subscribe the post_to_patch Lambda to the events_topic
         events_topic.add_subscription(
