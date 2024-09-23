@@ -212,8 +212,8 @@ def get_secret():
 
 def post_to_website(message):    
     date_str = message['date_id'].split('#')[0]
-    start_time = eastern_to_epoch(date_str, message['time'])
-    end_time = start_time + 3600
+    start_time = eastern_to_epoch(date_str, message['time']) * 1000
+    end_time = start_time + 3600000
     secret = get_secret()
 
     payload = {
@@ -232,6 +232,17 @@ def post_to_website(message):
             "where": {
                 "place": "Church of St. James the Less",
                 "address": "10 Church Lane, Scarsdale, NY 10583, USA",
+                "location": {
+                    "name": "10 Church Ln",
+                    "place_id": "ChIJvX-hGnSTwokRK_iMMwfNni0",
+                    "c_country": "United States",
+                    "c_locality": "Scarsdale",
+                    "c_postcode": "10583",
+                    "c_region": "New York",
+                    "c_street": "10 Church Lane",
+                    "latitude": 40.9897687,
+                    "longitude": -73.7999511
+                },
                 "virtualLoc": {}
             },
             "when": {
@@ -256,7 +267,7 @@ def post_to_website(message):
             "email": secret['username'],
             "notes": ""
         }
-}
+    }
 
     headers = {
         "Content-Type": "application/json",
