@@ -4,11 +4,9 @@ import os
 import pytz
 import requests
 
-from datetime import datetime
-
-
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
+from datetime import datetime
 
 website = 'patch'
 access_token = None

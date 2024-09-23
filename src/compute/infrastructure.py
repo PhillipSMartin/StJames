@@ -75,14 +75,14 @@ class StJamesCompute(Construct):
                 'SECRET_NAME': 'PatchCredentials',
                 'REGION_NAME': aws_region
             },
-            timeout=Duration.seconds(10),
+            timeout=Duration.seconds(30),
         )
 
-        secret_access_policy = iam.PolicyStatement(
+        patch_secret_access_policy = iam.PolicyStatement(
             actions=['secretsmanager:GetSecretValue'],
             resources=['arn:aws:secretsmanager:' + aws_region + ':' + aws_account + ':secret:PatchCredentials-T8SdBn']
         )
-        self.post_to_patch.add_to_role_policy(secret_access_policy)
+        self.post_to_patch.add_to_role_policy(patch_secret_access_policy)
 
         # Subscribe the post_to_patch Lambda to the events_topic
         events_topic.add_subscription(
@@ -109,7 +109,7 @@ class StJamesCompute(Construct):
             environment={
                 'TABLE_NAME': events_table.table_name
             },
-            timeout=Duration.seconds(10),
+            timeout=Duration.seconds(30),
         )
 
         # Subscribe the post_to_moms Lambda to the events_topic
@@ -135,10 +135,18 @@ class StJamesCompute(Construct):
             handler='index.handler',
             code=lambda_.Code.from_asset('src/compute/post_to_sojourner'),
             environment={
-                'TABLE_NAME': events_table.table_name
-            },
-            timeout=Duration.seconds(10),
+                'TABLE_NAME': events_table.table_name,
+                'URL': "https://sojourner.helpspot.com/index.php?pg=request",
+                'SECRET_NAME': 'SojournerCredentials',
+                'REGION_NAME': aws_region           },
+            timeout=Duration.seconds(30),
         )
+
+        sojourner_secret_access_policy = iam.PolicyStatement(
+            actions=['secretsmanager:GetSecretValue'],
+            resources=['arn:aws:secretsmanager:' + aws_region + ':' + aws_account + ':secret:SojournerCredentials-vxNcsc']
+        )
+        self.post_to_sojourner.add_to_role_policy(sojourner_secret_access_policy)
 
         # Subscribe the post_to_sojourner Lambda to the events_topic
         events_topic.add_subscription(
@@ -168,7 +176,7 @@ class StJamesCompute(Construct):
             #     'GOV_SIGNIN_ID'': 'camryni',
             #     'GOV_SIGNIN_PASSWORD': 'CamrynAdmin17',
             # },
-        #     timeout=Duration.seconds(10),
+        #     timeout=Duration.seconds(30),
         # )
 
         # # Subscribe the post_to_gov Lambda to the events_topic
