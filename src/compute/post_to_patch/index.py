@@ -55,13 +55,14 @@ def handler(event, context):
 
                 if posted:
                     events_posted += 1
-                    post_to_sns(f"Posted to {website}: { message['title'] }")
                     update_status(table, message, 'posted')
+                    post_to_sns(f"Posted to {website}: { message['title'] }")
+
                 else:
                     events_failed += 1
-                    post_to_sns(f"Failed to post to {website}: { message['title'] }")
                     if current_status == 'posting':
                         update_status(table, message, 'post')
+                    post_to_sns(f"Failed to post to {website}: { message['title'] }")
 
         body = f"Posted {events_posted} events, failed to post {events_failed} events"
         print(body)
