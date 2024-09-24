@@ -20,6 +20,7 @@ class StJamesCompute(Construct):
 
         events_table = kwargs['events_table']
         events_topic = kwargs['events_topic']
+        post_results_topic = kwargs['post_results_topic']
         data_bucket = kwargs['data_bucket']
         initial_events = kwargs['initial_events']
 
@@ -73,7 +74,8 @@ class StJamesCompute(Construct):
                 'LOGIN_URL': "https://pep.patchapi.io/api/authn/token",
                 'POST_URL': "https://api.patch.com/calendar/write-api/event",
                 'SECRET_NAME': 'PatchCredentials',
-                'REGION_NAME': aws_region
+                'REGION_NAME': aws_region,
+                'TOPIC_ARN': post_results_topic.topic_arn
             },
             timeout=Duration.seconds(30),
         )
@@ -98,6 +100,7 @@ class StJamesCompute(Construct):
 
         # Grant the Lambda function necessary permissions
         events_table.grant_read_write_data(self.post_to_patch)
+        post_results_topic.grant_publish(self.post_to_patch)
 
         # Create a Lambda function to post to the moms site
         self.post_to_moms = lambda_.Function(
@@ -110,7 +113,8 @@ class StJamesCompute(Construct):
                 'TABLE_NAME': events_table.table_name,
                 'SECRET_NAME': 'MomsCredentials',
                 'REGION_NAME': aws_region,
-                'URL': "https://tockify.com/api/interim/submitEvent/94489701c7c811e5ba094b4c274892ab"
+                'URL': "https://tockify.com/api/interim/submitEvent/94489701c7c811e5ba094b4c274892ab",
+                'TOPIC_ARN': post_results_topic.topic_arn
             },
             timeout=Duration.seconds(30),
         )
@@ -135,6 +139,7 @@ class StJamesCompute(Construct):
 
         # Grant the Lambda function necessary permissions
         events_table.grant_read_write_data(self.post_to_moms)
+        post_results_topic.grant_publish(self.post_to_moms)
 
         # Create a Lambda function to post to the sojourner site
         self.post_to_sojourner = lambda_.Function(
@@ -147,7 +152,9 @@ class StJamesCompute(Construct):
                 'TABLE_NAME': events_table.table_name,
                 'URL': "https://sojourner.helpspot.com/index.php?pg=request",
                 'SECRET_NAME': 'SojournerCredentials',
-                'REGION_NAME': aws_region           },
+                'REGION_NAME': aws_region,
+                'TOPIC_ARN': post_results_topic.topic_arn           
+            },
             timeout=Duration.seconds(30),
         )
 
@@ -171,6 +178,7 @@ class StJamesCompute(Construct):
 
         # Grant the Lambda function necessary permissions
         events_table.grant_read_write_data(self.post_to_sojourner)
+        post_results_topic.grant_publish(self.post_to_sojourner)
 
         # # Create a Lambda function to post to the gov site
         # self.post_to_patch = lambda_.Function(
@@ -184,6 +192,7 @@ class StJamesCompute(Construct):
             #     'GOV_URL': 'https://events.westchestergov.com/event-calendar-sign-in',   
             #     'GOV_SIGNIN_ID'': 'camryni',
             #     'GOV_SIGNIN_PASSWORD': 'CamrynAdmin17',
+            #     'TOPIC_ARN': post_results_topic.topic_arn
             # },
         #     timeout=Duration.seconds(30),
         # )
@@ -202,3 +211,4 @@ class StJamesCompute(Construct):
 
         # # Grant the Lambda function necessary permissions
         # events_table.grant_read_write_data(self.post_to_gov)
+        # post_results_topic.grant_publish(self.post_to_patch)

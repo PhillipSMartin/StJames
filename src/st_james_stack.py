@@ -32,6 +32,7 @@ class StJamesStack(Stack):
         compute = StJamesCompute(self, "StJamesLambdaProd",
             events_table = database.events_table,
             events_topic = messaging.events_topic,
+            post_results_topic = messaging.post_results_topic,
             data_bucket = storage.data_bucket,
             initial_events = "initialData/events.json")
         

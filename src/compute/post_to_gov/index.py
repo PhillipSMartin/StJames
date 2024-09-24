@@ -49,7 +49,7 @@ def log_in_to_gov():
             'Content-Type': 'application/x-www-form-urlencoded'
         }
 
-        # Send the POST reqest
+        # Send the POST request
         response = requests.post(gov_url, data=payload, headers=headers)
         if response.status_code == 200:
             print(f'Logged in to {gov_url} successfully!')

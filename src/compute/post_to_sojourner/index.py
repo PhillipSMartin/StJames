@@ -16,6 +16,8 @@ current_status = None
 current_version = 0
 
 url = os.getenv('URL')
+sns = boto3.client('sns')
+topic_arn = os.environ['TOPIC_ARN']  
 
 def handler(event, context):
 
@@ -52,9 +54,11 @@ def handler(event, context):
 
             if posted:
                 events_posted += 1
+                post_to_sns(f"Posted to {website}: { message['title'] }")
                 update_status(table, message, 'posted')
             else:
                 events_failed += 1
+                post_to_sns(f"Failed to post to {website}: { message['title'] }")
                 if current_status == 'posting':
                     update_status(table, message, 'post')
 
@@ -80,6 +84,16 @@ def handler(event, context):
             'body': json.dumps({ 'message': 'Internal error' })
         }
 
+def post_to_sns(message): 
+    try:      
+        sns.publish(
+            TopicArn=topic_arn,
+            Message=message,
+            Subject=f"Result from post_to_{website}"
+        )
+    except Exception as e:
+        print(f"Failed to post to SNS: {e}")
+        
 # update item, status, and version
 def get_item(table, message):
     global current_item
