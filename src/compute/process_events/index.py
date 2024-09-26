@@ -27,7 +27,7 @@ def handler(event, context):
                 # Post messages to SNS topic
                 post_to_sns(item)
                 count += 1
-                if count >= 3:
+                if count >= 4:
                     break
                 
         return {

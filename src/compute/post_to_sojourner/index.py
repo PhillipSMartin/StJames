@@ -7,7 +7,6 @@ import requests
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from bs4 import BeautifulSoup
-from datetime import datetime
 
 website = 'sojourner'
 
@@ -300,7 +299,6 @@ def post_to_website(message, form_values):
 
     headers = {
         "Content-Type": "application/x-www-form-urlencoded"
-       # "Cookie": f"JSESSIONID={access_token}"
     }
 
     print(f"Payload: { payload }")
