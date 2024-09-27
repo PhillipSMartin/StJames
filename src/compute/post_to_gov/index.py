@@ -9,7 +9,9 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 
 website = 'gov'
-cookies = None
+cookies = requests.cookies.RequestsCookieJar()
+# cookies.set('c572abe779ec5a9cc255f401d046399e', 'initial_value')
+# cookies.set('joomla_user_state', 'logged_out')
 
 current_item = None
 current_status = None
@@ -239,7 +241,7 @@ def login_to_website():
 
     response = requests.get(login_url)
     if response.status_code == 200:
-        cookies = response.cookies
+        cookies.update(response.cookies)
         print(f'Cookies: {cookies}')
 
         csrf_token = None
@@ -249,7 +251,6 @@ def login_to_website():
         if script_tag:       
             json_data = json.loads(script_tag.string)
             csrf_token = json_data.get('csrf.token')
-            print(f'CSRF Token: {csrf_token}')
 
         if not csrf_token:
             print('CSRF token not found.')
@@ -265,15 +266,14 @@ def login_to_website():
             'username': secret['username']
         }
 
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
-
         # Send the POST request
-        response = requests.post(login_url, data=payload, headers=headers)
+        print(f"Payload: {payload}")
+        response = requests.post(login_url, data=payload, cookies=cookies)
         if response.status_code == 200:
             print(f'Login successful')
-            return True
+            cookies.update(response.cookies)
+            print(cookies)
+            return False # temporary while testing
     
     print(f'Login failed: status code {response.status_code}')
     print(response.text)
@@ -346,18 +346,20 @@ def post_to_website(message):
         "year": year
     }
 
-    print(f"Form data:{form_data}")
-    return False
+    print(f"Form data: {form_data}")
 
     response = requests.post(post_url, data=form_data, cookies=cookies)
   
     if response.status_code == 200:
-        print("Post successful")
         soup = BeautifulSoup(response.text, 'html.parser')
         alert_divs = soup.find_all('div', class_='alert-message')
         for div in alert_divs:
             alert_text = div.get_text(strip=True) 
             print(alert_text)
+            if alert_text == "Please login first":
+                print("Post failed")
+                return False
+        print("Post successful")
         return True
     
     else:
