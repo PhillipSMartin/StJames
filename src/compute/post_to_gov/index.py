@@ -190,7 +190,7 @@ def update_status(table, message, new_status):
 
 def calculate_week_and_julian(date_string):
     # Parse the input date string
-    date = datetime.strptime(date_string, "%Y/%m/%d")
+    date = datetime.strptime(date_string, "%Y-%m-%d")
     
     # Calculate the week number
     week_number = date.isocalendar()[1]
@@ -206,12 +206,11 @@ def get_times(time_string):
     start_time_obj = datetime.strptime(time_string, '%I:%M %p')
     end_time_obj = start_time_obj + timedelta(hours=1)
     start_time_12hr = start_time_obj.strftime('%I:%M')
-    end_time_12hr = end_time_obj.strftime('%I:%M %p')
+    end_time_12hr = end_time_obj.strftime('%I:%M')
     start_time_24hr = start_time_obj.strftime('%H:%M')
     end_time_24hr = end_time_obj.strftime('%H:%M')
-    start_time_ampm =  start_time_obj.strftime('%p')
-    end_time_ampm = end_time_obj.strftime('%p')
-    return start_time_12hr, end_time_12hr, start_time_24hr, end_time_24hr, start_time_ampm, end_time_ampm
+
+    return start_time_12hr, end_time_12hr, start_time_24hr, end_time_24hr
 
 def get_secret():
     secret_name = os.environ.get('SECRET_NAME')
@@ -273,8 +272,6 @@ def login_to_website():
         # Send the POST request
         response = requests.post(login_url, data=payload, headers=headers)
         if response.status_code == 200:
-            cookies = response.cookies
-            print(f'Cookies: {cookies}')
             print(f'Login successful')
             return True
     
@@ -286,79 +283,87 @@ def login_to_website():
 def post_to_website(message):   
 
     date_str = message['date_id'].split('#')[0]
-    week_number, julian_date = calculate_week_and_julian(date_str)
+    _, julian_date = calculate_week_and_julian(date_str)
 
-    month, day, year = date_str.split('/')
-    alternate_date = f"{year}-{month}-{day}"
-    month = month.zfill(2)
-    day = day.zfill(2)
-    full_date = f"{month}/{day}/{year}"
+    current_date = datetime.now()
+    current_date_format1 = current_date.strftime("%m/%d/%Y")
+    current_month, current_day, current_year = current_date_format1.split('/')   
+    current_week_number, _ = calculate_week_and_julian(f"{current_year}-{current_month}-{current_day}")
 
-    start_time_12hr, end_time_12hr, start_time_24hr, end_time_24hr, start_time_ampm, end_time_ampm = get_times(message['time'])
+    year, month, day = date_str.split('-')
+    date_format1 = f"{month}/{day}/{year}"
+    date_format2 = f"{year}-{int(month)}-{int(day)}"
+
+
+    start_time_12hr, end_time_12hr, start_time_24hr, end_time_24hr = get_times(message['time'])
 
     form_data = {
         "Itemid": "117",
         "access": "1",
         "boxchecked": "0",
-        "bymonth": month,
-        "bymonthday": day,
-        "byyearday": julian_date,
-        "byweekday": week_number,
+        "bymonth": f"{int(current_month)}",
+        "bymonthday": f"{int(day)}",
+        "byweekno": f"{current_week_number}",
+        "byyearday": f"{julian_date}",
         "catid[]": ["13"],
         "contact_info": "",
         "count": "1",
         "countuntil": "count",
-        "day": day,
+        "day": f"{int(day)}",
         "end_12h": end_time_12hr,
-        "end_ampm": end_time_ampm,
+        "end_ampm": "none",
         "end_time": end_time_24hr,
         "evid": "0",
         "extra_info": "",
         "freq": "none",
         "ics_id": "1",
-        "irregular": full_date,
-        "jevcontent": f"<p>message['description']<p>",
+        "irregular": current_date_format1,
+        "jevcontent": f"<p>{message['description']}<p>",
         "jevtype": "icaldb",
-        "location": "Church of St. James the Less, 10 CHurch Land, Scarsdale, NY",
-        "month": month,
+        "location": "Church of St. James the Less, 10 Church Lane, Scarsdale, NY",
+        "month": f"{int(month)}",
         "multiday": "1",
         "option": "com_jevents",
-        "publish_down": full_date,
-        "publish_down2": alternate_date,
-        "publish_up": full_date,
-        "publish_up2": alternate_date,  
+        "publish_down": current_date_format1,
+        "publish_down2": date_format2,
+        "publish_up": date_format1,
+        "publish_up2": date_format2,  
         "rinterval": "1", 
         "rp_id": "0",  
         "start_12h": start_time_12hr,
-        "start_ampm": start_time_ampm,
+        "start_ampm": "none",
         "start_time": start_time_24hr,
         "state": "1",  # 1 for published, 0 for unpublished
-        "updaterepeats": "0",
-        "task": "icalevent.edit",
+        "task": "icalevent.save",
         "title": message["title"],
-        "until": full_date,
-        "until2": alternate_date,
+        "until": current_date_format1,
+        "until2": date_format2,
         "updaterepeats": "0",
         "valid_dates": "1", 
         "view12Hour": "1",
-        "weekdays[]": ["2"], 
-        "weaknums[]": ["1","2","3","4","5"],    
+        "weekdays[]": ["5"], 
+        "weeknums[]": ["1","2","3","4","5"],    
         "year": year
     }
 
     print(f"Form data:{form_data}")
     return False
 
-    # response = requests.post(post_url, data=form_data)
+    response = requests.post(post_url, data=form_data, cookies=cookies)
   
-    # if response.status_code == 200:
-    #     print("Post successful")
-    #     return True
+    if response.status_code == 200:
+        print("Post successful")
+        soup = BeautifulSoup(response.text, 'html.parser')
+        alert_divs = soup.find_all('div', class_='alert-message')
+        for div in alert_divs:
+            alert_text = div.get_text(strip=True) 
+            print(alert_text)
+        return True
     
-    # else:
-    #     print(f"Post failed: {response.status_code}")
-    #     print(f"Response: {response.text}")
-    #     return False
+    else:
+        print(f"Post failed: {response.status_code}")
+        print(f"Response: {response.text}")
+        return False
         
 
 
