@@ -180,41 +180,41 @@ class StJamesCompute(Construct):
         events_table.grant_read_write_data(self.post_to_sojourner)
         post_results_topic.grant_publish(self.post_to_sojourner)
 
-        # # Create a Lambda function to post to the gov site
-        # self.post_to_patch = lambda_.Function(
-        #     self, 'PostToGovLambda',
-        #     function_name='StJames-post-to-gov',
-        #     runtime=lambda_.Runtime.PYTHON_3_9,
-        #     handler='index.handler',
-        #     code=lambda_.Code.from_asset('src/compute/post_to_gov'),
-            # environment={
-            #     'TABLE_NAME': events_table.table_name,
-            #     'LOGIN_URL': 'https://events.westchestergov.com/event-calendar-sign-in', 
-            #     'POST_URL': 'https://events.westchestergov.com/event-submission',    
-            #     'SECRET_NAME': 'GovCredentials',
-            #     'TOPIC_ARN': post_results_topic.topic_arn
-            # },
-        #     timeout=Duration.seconds(30),
-        # )
+        # Create a Lambda function to post to the gov site
+        self.post_to_gov = lambda_.Function(
+            self, 'PostToGovLambda',
+            function_name='StJames-post-to-gov',
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/compute/post_to_gov'),
+            environment={
+                'TABLE_NAME': events_table.table_name,
+                'LOGIN_URL': 'https://events.westchestergov.com/event-calendar-sign-in', 
+                'POST_URL': 'https://events.westchestergov.com/event-submission',    
+                'SECRET_NAME': 'GovCredentials',
+                'TOPIC_ARN': post_results_topic.topic_arn
+            },
+            timeout=Duration.seconds(30),
+        )
 
-        # gov_secret_access_policy = iam.PolicyStatement(
-        #     actions=['secretsmanager:GetSecretValue'],
-        #     resources=['arn:aws:secretsmanager:' + aws_region + ':' + aws_account + ':secret:GovCredentials-GolrOX']
-        # )
-        # self.post_to_gov.add_to_role_policy(gov_secret_access_policy)
+        gov_secret_access_policy = iam.PolicyStatement(
+            actions=['secretsmanager:GetSecretValue'],
+            resources=['arn:aws:secretsmanager:' + aws_region + ':' + aws_account + ':secret:GovCredentials-GolrOX']
+        )
+        self.post_to_gov.add_to_role_policy(gov_secret_access_policy)
 
-        # # Subscribe the post_to_gov Lambda to the events_topic
-        # events_topic.add_subscription(
-        #     subscriptions.LambdaSubscription(
-        #         self.post_to_gov,
-        #         filter_policy_with_message_body={
-        #             'post': sns.FilterOrPolicy.filter(sns.SubscriptionFilter.string_filter(
-        #                 allowlist=['gov']
-        #             ))
-        #         }            
-        #     )
-        # )        
+        # Subscribe the post_to_gov Lambda to the events_topic
+        events_topic.add_subscription(
+            subscriptions.LambdaSubscription(
+                self.post_to_gov,
+                filter_policy_with_message_body={
+                    'post': sns.FilterOrPolicy.filter(sns.SubscriptionFilter.string_filter(
+                        allowlist=['gov']
+                    ))
+                }            
+            )
+        )        
 
-        # # Grant the Lambda function necessary permissions
-        # events_table.grant_read_write_data(self.post_to_gov)
-        # post_results_topic.grant_publish(self.post_to_gov)
+        # Grant the Lambda function necessary permissions
+        events_table.grant_read_write_data(self.post_to_gov)
+        post_results_topic.grant_publish(self.post_to_gov)

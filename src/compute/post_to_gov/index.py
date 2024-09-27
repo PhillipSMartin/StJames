@@ -6,7 +6,7 @@ import requests
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 
 website = 'gov'
 cookies = None
@@ -190,7 +190,7 @@ def update_status(table, message, new_status):
 
 def calculate_week_and_julian(date_string):
     # Parse the input date string
-    date = datetime.strptime(date_string, "%m/%d/%Y")
+    date = datetime.strptime(date_string, "%Y/%m/%d")
     
     # Calculate the week number
     week_number = date.isocalendar()[1]
@@ -199,6 +199,19 @@ def calculate_week_and_julian(date_string):
     julian_date = date.timetuple().tm_yday
     
     return week_number, julian_date
+
+def get_times(time_string):
+    if ':' not in time_string:
+        time_string = time_string.replace(' ', ':00 ')
+    start_time_obj = datetime.strptime(time_string, '%I:%M %p')
+    end_time_obj = start_time_obj + timedelta(hours=1)
+    start_time_12hr = start_time_obj.strftime('%I:%M')
+    end_time_12hr = end_time_obj.strftime('%I:%M %p')
+    start_time_24hr = start_time_obj.strftime('%H:%M')
+    end_time_24hr = end_time_obj.strftime('%H:%M')
+    start_time_ampm =  start_time_obj.strftime('%p')
+    end_time_ampm = end_time_obj.strftime('%p')
+    return start_time_12hr, end_time_12hr, start_time_24hr, end_time_24hr, start_time_ampm, end_time_ampm
 
 def get_secret():
     secret_name = os.environ.get('SECRET_NAME')
@@ -271,60 +284,81 @@ def login_to_website():
 
 
 def post_to_website(message):   
-    return False 
+
     date_str = message['date_id'].split('#')[0]
+    week_number, julian_date = calculate_week_and_julian(date_str)
 
+    month, day, year = date_str.split('/')
+    alternate_date = f"{year}-{month}-{day}"
+    month = month.zfill(2)
+    day = day.zfill(2)
+    full_date = f"{month}/{day}/{year}"
 
-    payload = {
-        "eventDateEpoch": epoch_time,
-        "eventType": "free",
-        "title": message['title'],
-        "contentHtml": f"<p>{ message['description'] }</p>",
-        "patchId": "37",
-        "eventAddress": {
-            "country":"US",
-            "state":"NY",
-            "locality":"Scarsdale",
-            "postalCode":"10583",
-            "streetAddress":"10 Church Ln",
-            "premise":"",
-            "name":"The Church of St. James the Less"
-        },
-        "imageUrls": [
-            "https://stjames-data-pm186.s3.amazonaws.com/SJL+logo.jpg"
-        ],
-        "eventLocation": {
-            "type":"Point",
-            "coordinates":[-73.8000084,40.98955369999999]
-        },
-        "imageValidation": [
-            {
-                "image_filename": "SJL logo.jpg",
-                "image_src": "",
-                "image_suspect": 0,
-                "image_url": "https://stjames-data-pm186.s3.amazonaws.com/SJL+logo.jpg"
-            }
-        ]
+    start_time_12hr, end_time_12hr, start_time_24hr, end_time_24hr, start_time_ampm, end_time_ampm = get_times(message['time'])
+
+    form_data = {
+        "Itemid": "117",
+        "access": "1",
+        "boxchecked": "0",
+        "bymonth": month,
+        "bymonthday": day,
+        "byyearday": julian_date,
+        "byweekday": week_number,
+        "catid[]": ["13"],
+        "contact_info": "",
+        "count": "1",
+        "countuntil": "count",
+        "day": day,
+        "end_12h": end_time_12hr,
+        "end_ampm": end_time_ampm,
+        "end_time": end_time_24hr,
+        "evid": "0",
+        "extra_info": "",
+        "freq": "none",
+        "ics_id": "1",
+        "irregular": full_date,
+        "jevcontent": f"<p>message['description']<p>",
+        "jevtype": "icaldb",
+        "location": "Church of St. James the Less, 10 CHurch Land, Scarsdale, NY",
+        "month": month,
+        "multiday": "1",
+        "option": "com_jevents",
+        "publish_down": full_date,
+        "publish_down2": alternate_date,
+        "publish_up": full_date,
+        "publish_up2": alternate_date,  
+        "rinterval": "1", 
+        "rp_id": "0",  
+        "start_12h": start_time_12hr,
+        "start_ampm": start_time_ampm,
+        "start_time": start_time_24hr,
+        "state": "1",  # 1 for published, 0 for unpublished
+        "updaterepeats": "0",
+        "task": "icalevent.edit",
+        "title": message["title"],
+        "until": full_date,
+        "until2": alternate_date,
+        "updaterepeats": "0",
+        "valid_dates": "1", 
+        "view12Hour": "1",
+        "weekdays[]": ["2"], 
+        "weaknums[]": ["1","2","3","4","5"],    
+        "year": year
     }
 
-    headers = {
-        "Content-Type": "application/json",
-        "Patch-Authorization": f"Bearer {access_token}"
-    }
+    print(f"Form data:{form_data}")
+    return False
 
-    print(f"Payload: { payload }")
-    print(f"Headers: { headers }")
-
-    response = requests.post(post_url, json=payload, headers=headers)
+    # response = requests.post(post_url, data=form_data)
+  
+    # if response.status_code == 200:
+    #     print("Post successful")
+    #     return True
     
-    if response.status_code == 200:
-        print("Post successful")
-        return True
-    
-    else:
-        print(f"Post failed: {response.status_code}")
-        print(f"Response: {response.text}")
-        return False
+    # else:
+    #     print(f"Post failed: {response.status_code}")
+    #     print(f"Response: {response.text}")
+    #     return False
         
 
 

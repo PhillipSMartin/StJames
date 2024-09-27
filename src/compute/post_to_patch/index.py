@@ -193,7 +193,16 @@ def eastern_to_epoch(date_str, time_str):
     datetime_str = f"{date_str} {time_str}"
     
     # Parse the datetime string
-    dt = datetime.strptime(datetime_str, "%Y-%m-%d %I:%M %p")
+    try:
+        dt = datetime.strptime(datetime_str, "%Y-%m-%d %I:%M %p")
+    except Exception:
+        dt = None
+    
+    if not dt:
+        try:
+            dt = datetime.strptime(datetime_str, "%Y-%m-%d %I %p")
+        except Exception:
+                raise Exception(f"Failed to parse date and time")
     
     # Set the timezone to Eastern Time
     eastern = pytz.timezone('US/Eastern')
