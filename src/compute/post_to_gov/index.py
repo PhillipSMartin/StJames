@@ -9,13 +9,12 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 
 website = 'gov'
-cookies = requests.cookies.RequestsCookieJar()
-# cookies.set('c572abe779ec5a9cc255f401d046399e', 'initial_value')
-# cookies.set('joomla_user_state', 'logged_out')
 
 current_item = None
 current_status = None
 current_version = 0
+
+session = requests.Session()
 
 login_url = os.getenv('LOGIN_URL')
 post_url = os.getenv('POST_URL')
@@ -235,15 +234,11 @@ def get_secret():
     return secret
 
 def login_to_website():
-    global cookies
-
+    global session
     secret = get_secret()
 
-    response = requests.get(login_url)
+    response = session.get(login_url)
     if response.status_code == 200:
-        cookies.update(response.cookies)
-        print(f'Cookies: {cookies}')
-
         csrf_token = None
         soup = BeautifulSoup(response.text, 'html.parser')
         script_tag = soup.find('script', {'type': 'application/json', 'class': 'joomla-script-options new'})
@@ -254,8 +249,11 @@ def login_to_website():
 
         if not csrf_token:
             print('CSRF token not found.')
-            return False  
+            return False 
          
+        for cookie in session.cookies:
+            print(f"{cookie.name}: {cookie.value}")
+        
         payload = {
             'Submit': '',
             csrf_token: '1',  # CSRF token
@@ -268,19 +266,35 @@ def login_to_website():
 
         # Send the POST request
         print(f"Payload: {payload}")
-        response = requests.post(login_url, data=payload, cookies=cookies)
+        # response = session.post(login_url, data=payload)
+        req = requests.Request('POST', login_url, data=payload)
+        prepped = session.prepare_request(req)
+
+        print("Request headers:")
+        for header, value in prepped.headers.items():
+            print(f"{header}: {value}")
+        
         if response.status_code == 200:
             print(f'Login successful')
-            cookies.update(response.cookies)
-            print(cookies)
-            return False # temporary while testing
-    
+            # return True
+
+        # temporary for debugging
+        for cookie in session.cookies:
+            print(f"{cookie.name}: {cookie.value}")            
+        soup = BeautifulSoup(response.text, 'html.parser')
+        alert_divs = soup.find_all('div', class_='alert-message')
+        for div in alert_divs:
+            alert_text = div.get_text(strip=True) 
+            print(alert_text)            
+        return False 
+        
     print(f'Login failed: status code {response.status_code}')
     print(response.text)
     return False
 
 
-def post_to_website(message):   
+def post_to_website(message):  
+    global session
 
     date_str = message['date_id'].split('#')[0]
     _, julian_date = calculate_week_and_julian(date_str)
@@ -348,7 +362,7 @@ def post_to_website(message):
 
     print(f"Form data: {form_data}")
 
-    response = requests.post(post_url, data=form_data, cookies=cookies)
+    response = session.post(post_url, data=form_data)
   
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, 'html.parser')
