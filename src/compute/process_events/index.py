@@ -19,16 +19,12 @@ def handler(event, context):
             KeyConditionExpression=Key('access').eq('public') & Key('date_id').gt(today)
         )
 
-        count = 0
         for item in response['Items']:
             if 'post' in item and isinstance(item['post'], list) and item['post']:
                 print(f"Processing: {item['title']}: post={item['post']}")
 
                 # Post messages to SNS topic
                 post_to_sns(item)
-                count += 1
-                if count >= 1:
-                    break
                 
         return {
             'statusCode': 200,

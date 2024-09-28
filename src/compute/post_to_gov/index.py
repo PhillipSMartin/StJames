@@ -250,10 +250,7 @@ def login_to_website():
         if not csrf_token:
             print('CSRF token not found.')
             return False 
-         
-        for cookie in session.cookies:
-            print(f"{cookie.name}: {cookie.value}")
-        
+       
         payload = {
             'Submit': '',
             csrf_token: '1',  # CSRF token
@@ -264,32 +261,26 @@ def login_to_website():
             'username': secret['username']
         }
 
+        additional_headers = {
+            'sec-ch-ua': '"Google Chrome";v="89", "Chromium";v="89", ";Not A Brand";v="99"',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-User': '?1',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'Upgrade-Insecure-Requests': '1'
+        }
+
         # Send the POST request
-        print(f"Payload: {payload}")
-        # response = session.post(login_url, data=payload)
-        req = requests.Request('POST', login_url, data=payload)
-        prepped = session.prepare_request(req)
-
-        print("Request headers:")
-        for header, value in prepped.headers.items():
-            print(f"{header}: {value}")
+        session.headers.update(additional_headers)
+        response = session.post(login_url, data=payload, headers=additional_headers)
         
-        if response.status_code == 200:
+        if (response.status_code == 200) and (2 <= len(session.cookies)):
             print(f'Login successful')
-            # return True
-
-        # temporary for debugging
-        for cookie in session.cookies:
-            print(f"{cookie.name}: {cookie.value}")            
-        soup = BeautifulSoup(response.text, 'html.parser')
-        alert_divs = soup.find_all('div', class_='alert-message')
-        for div in alert_divs:
-            alert_text = div.get_text(strip=True) 
-            print(alert_text)            
-        return False 
+            return True
         
-    print(f'Login failed: status code {response.status_code}')
-    print(response.text)
+    print(f'Login failed: status code={response.status_code}, number of cookies={len(session.cookies)}')
     return False
 
 
@@ -361,7 +352,6 @@ def post_to_website(message):
     }
 
     print(f"Form data: {form_data}")
-
     response = session.post(post_url, data=form_data)
   
     if response.status_code == 200:
@@ -370,9 +360,7 @@ def post_to_website(message):
         for div in alert_divs:
             alert_text = div.get_text(strip=True) 
             print(alert_text)
-            if alert_text == "Please login first":
-                print("Post failed")
-                return False
+
         print("Post successful")
         return True
     
