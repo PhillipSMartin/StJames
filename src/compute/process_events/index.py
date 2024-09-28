@@ -4,8 +4,66 @@ import json
 import os
 
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 
 def handler(event, context):
+    try:
+        # Called by DynamoDB stream
+        if 'Records' in event:
+            print("Processing DynamoDB stream")
+            process_dynamodb_stream(event)
+
+        # Called by API Gateway
+        else:
+            print("Processing API call")
+            process_api_call(event)
+    
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON: {e}")
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'message': 'Invalid JSON'})
+        }
+    
+    except ClientError as e:
+        print(f"AWS service error: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'AWS service error', 'error': e.response['Error']['Code']})
+        }
+    
+    except KeyError as e:
+        print(f"Missing key in data structure: {e}")
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'message': 'Missing required data'})
+        }
+    
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'Internal server error'})
+        }
+    
+    return {
+        'statusCode': 200,
+        'body': 'Processing completed successfully'
+    }   
+
+def process_dynamodb_stream(event):
+    processed_count = 0
+    for record in event['Records']:
+        if record['eventName'] == 'INSERT':
+            item = record['dynamodb']['NewImage']
+            print(f"Processing: {item['title']}: post={item['post']}")
+
+            if post_to_sns(item):
+                processed_count += 1
+                
+    print(f"Processed {processed_count} table inserts")
+
+def process_api_call(event):
     try:
         # Initialize DynamoDB client
         dynamodb = boto3.resource('dynamodb')
@@ -19,32 +77,24 @@ def handler(event, context):
             KeyConditionExpression=Key('access').eq('public') & Key('date_id').gt(today)
         )
 
+        processed_count = 0
         for item in response['Items']:
             if 'post' in item and isinstance(item['post'], list) and item['post']:
                 print(f"Processing: {item['title']}: post={item['post']}")
 
                 # Post messages to SNS topic
-                post_to_sns(item)
-                
-        return {
-            'statusCode': 200,
-            'body': 'Processing completed successfully'
-        }
-    
-    except json.JSONDecodeError as e:
-        print(f"Error decoding JSON: {e}")
-        return {
-            'statusCode': 400,
-            'body': json.dumps({'message': 'Invalid JSON in event'})
-        }
-    
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return {
-            'statusCode': 500,
-            'body': json.dumps({'message': 'Internal server error'})
-        }
-    
+                if post_to_sns(item):
+                    processed_count += 1
+
+        print(f"Processed {processed_count} items")
+
+    except ClientError as e:
+        print(f"DynamoDB error: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
+        raise
+
+    except KeyError as e:
+        print(f"Missing environment variable: {e}")
+        raise                     
     
 def post_to_sns(item):
     # Initialize SNS client
@@ -57,10 +107,22 @@ def post_to_sns(item):
     if 'version' in item:
         del item['version']
         
-    response = sns.publish(
-        TopicArn=topic_arn,
-        Message=json.dumps(item),
-        Subject=f"New post: {item.get('title', 'Untitled')}"
-    )
+    message = json.dumps(item)
+    subject = f"New post: {item.get('title', 'Untitled')}"
     
-    print(f"Message published to SNS. MessageId: {response['MessageId']}")
+    try:
+        response = sns.publish(
+            TopicArn=topic_arn,
+            Message=message,
+            Subject=subject
+        )
+        print(f"Message published to SNS. MessageId: {response['MessageId']}")
+        return True
+
+    except ClientError as e:
+        print(f"Failed to publish message to SNS. Error code: {e.response['Error']['Code']}, Message: {e.response['Error']['Code']}")
+        return False
+    
+    except KeyError as e:
+        print(f"Missing key in item or environment variable: {e}")
+        raise

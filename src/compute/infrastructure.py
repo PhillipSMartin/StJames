@@ -3,6 +3,7 @@ import os
 from aws_cdk import (
     aws_iam as iam,
     aws_lambda as lambda_,
+    aws_lambda_event_sources as lambda_event_sources,
     aws_sns as sns,
     aws_sns_subscriptions as subscriptions,
     Duration,
@@ -56,6 +57,15 @@ class StJamesCompute(Construct):
                 'TOPIC_ARN': events_topic.topic_arn
             },
             timeout=Duration.seconds(30),
+        )
+
+        self.process_events.add_event_source(
+            lambda_event_sources.DynamoEventSource(
+                events_table,
+                starting_position=lambda_.StartingPosition.TRIM_HORIZON,
+                batch_size=1,
+                retry_attempts=3
+            )
         )
 
         # Grant the Lambda function necessary permissions
