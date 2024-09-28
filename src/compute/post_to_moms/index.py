@@ -237,9 +237,13 @@ def get_secret():
 def post_to_website(message):    
     date_str = message['date_id'].split('#')[0]
     start_time = eastern_to_epoch(date_str, message['time']) * 1000
-    end_time = start_time + 3600000
-    secret = get_secret()
 
+    if 'endtime' in message:
+        end_time = eastern_to_epoch(date_str, message['endtime']) * 1000
+    else:
+        end_time = start_time + 3600000
+
+    secret = get_secret()
     payload = {
         "event": {
             "what": {

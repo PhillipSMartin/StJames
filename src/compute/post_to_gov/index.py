@@ -201,11 +201,20 @@ def calculate_week_and_julian(date_string):
     
     return week_number, julian_date
 
-def get_times(time_string):
-    if ':' not in time_string:
-        time_string = time_string.replace(' ', ':00 ')
-    start_time_obj = datetime.strptime(time_string, '%I:%M %p')
-    end_time_obj = start_time_obj + timedelta(hours=1)
+def get_times(message):
+    start_time_str = message['time']
+    if ':' not in start_time_str:
+        start_time_str = start_time_str.replace(' ', ':00 ')
+    start_time_obj = datetime.strptime(start_time_str, '%I:%M %p')
+
+    if 'endtime' in message:
+        end_time_str = message['endtime']
+        if ':' not in end_time_str:
+            end_time_str = end_time_str.replace(' ', ':00 ')
+        end_time_obj = datetime.strptime(end_time_str, '%I:%M %p')
+    else:
+        end_time_obj = start_time_obj + timedelta(hours=1)
+
     start_time_12hr = start_time_obj.strftime('%I:%M')
     end_time_12hr = end_time_obj.strftime('%I:%M')
     start_time_24hr = start_time_obj.strftime('%H:%M')
@@ -300,7 +309,7 @@ def post_to_website(message):
     date_format2 = f"{year}-{int(month)}-{int(day)}"
 
 
-    start_time_12hr, end_time_12hr, start_time_24hr, end_time_24hr = get_times(message['time'])
+    start_time_12hr, end_time_12hr, start_time_24hr, end_time_24hr = get_times(message)
 
     form_data = {
         "Itemid": "117",
