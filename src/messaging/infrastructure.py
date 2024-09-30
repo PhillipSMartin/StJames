@@ -14,7 +14,7 @@ class StJamesMessaging(Construct):
 
         # Create an SNS topic for results of Lambda functions that do posting
         self.post_results_topic = sns.Topic(
-            self, "PostTopic",
-            topic_name="StJames-post-results-topic",
-            display_name="St. James Post Topic"
+            self, "ResultsTopic",
+            topic_name="StJames-results-topic",
+            display_name="St. James Results Topic"
         )

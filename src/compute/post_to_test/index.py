@@ -88,22 +88,19 @@ def post_to_sns(success, item, error_message=None):
 def update_status(item, new_status):
     try:
         print(f"Updating status of {item['title']} to {new_status}")
+        params = {
+            "sort-key": item["date_id"],
+            "new-status": new_status,
+            "website": website
+        }
         if new_status == 'posting':
-            data = {
-                "old-status": "post",   
-                "new-status": "posting"
-            }
-        else:
-            data = {
-                "new-status": new_status
-            }
-        print(f"Url: {status_url}, data: {data}")
+            params["old-status"] = "post"
 
-        response = requests.post(status_url, data=data)
-        if response.status_code == 200:
+        response = requests.post(status_url, params=params)       
+        if response and response.status_code == 200:
             return True, None
         else:
-            msg = (f"Failed to update status: {response.text}")
+            msg = (f"Failed to update status: {response.text if response else 'No response from api'}")
             print(msg)
             return False, msg
         

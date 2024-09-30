@@ -43,5 +43,5 @@ class StJamesStack(Stack):
         StJamesApiResources(self, "StJamesApiResources",
             api = api,
             post_events_handler = compute.process_events,
-            status_handler = compute.process_events)
+            status_handler = compute.process_status)
 

@@ -260,3 +260,20 @@ class StJamesCompute(Construct):
         # Grant the Lambda function necessary permissions
         events_table.grant_read_write_data(self.post_to_test)
         post_results_topic.grant_publish(self.post_to_test)  
+
+        # Create a Lambda function to update the status of an event
+        self.process_status = lambda_.Function(
+            self, 'ProcessStatusLambda',
+            function_name='StJames-process-status',
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/compute/process_status'),
+            environment={
+                'TABLE_NAME': events_table.table_name,
+            },
+            timeout=Duration.seconds(10),
+        )   
+
+        # Grant the Lambda function necessary permissions
+        events_table.grant_read_write_data(self.process_status)
+        

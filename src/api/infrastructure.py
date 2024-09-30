@@ -31,6 +31,8 @@ class StJamesApiResources(Construct):
             request_parameters={
                 'method.request.querystring.old-status': False,  # Optional
                 'method.request.querystring.new-status': True,   # Required
+                'method.request.querystring.sort-key': True,     # Required         
+                'method.request.querystring.website': True       # Required
             }
         )
 
