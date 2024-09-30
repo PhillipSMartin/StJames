@@ -24,6 +24,7 @@ class StJamesCompute(Construct):
         post_results_topic = kwargs['post_results_topic']
         data_bucket = kwargs['data_bucket']
         initial_events = kwargs['initial_events']
+        api = kwargs['api']
 
        # Create a Lambda function to initialize the Events Table if it is empty
         self.initialize_events = lambda_.Function(
@@ -238,7 +239,8 @@ class StJamesCompute(Construct):
             code=lambda_.Code.from_asset('src/compute/post_to_test'),
             environment={
                 'TABLE_NAME': events_table.table_name,
-                'TOPIC_ARN': post_results_topic.topic_arn
+                'TOPIC_ARN': post_results_topic.topic_arn,
+                'STATUS_URL': api.events_api.url_for_path("/status")
             },
             timeout=Duration.seconds(10),
         )

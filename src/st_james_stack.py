@@ -1,5 +1,4 @@
 from aws_cdk import (
-    CfnOutput,
     Stack,
     Tags
 )
@@ -37,7 +36,8 @@ class StJamesStack(Stack):
             events_topic = messaging.events_topic,
             post_results_topic = messaging.post_results_topic,
             data_bucket = storage.data_bucket,
-            initial_events = "initialData/events.json")
+            initial_events = "initialData/events.json",
+            api = api)
 
         # Attach the Lambda functions to the API Gateway
         StJamesApiResources(self, "StJamesApiResources",

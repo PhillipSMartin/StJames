@@ -1,14 +1,15 @@
 import boto3
 import json
 import os
-# import requests
+import requests
 
 from botocore.exceptions import ClientError
 
 website = 'test'
 
 sns = boto3.client('sns')
-topic_arn = os.environ['TOPIC_ARN']  
+topic_arn = os.environ['TOPIC_ARN'] 
+status_url = os.environ['STATUS_URL'] 
 
 def handler(event, context):
     error_message = None 
@@ -85,8 +86,32 @@ def post_to_sns(success, item, error_message=None):
         print(f"Failed to post to SNS: {e}")
 
 def update_status(item, new_status):
-    print(f"Updating status of {item['title']} to {new_status}")
-    return False, "Testing error message handling"       
+    try:
+        print(f"Updating status of {item['title']} to {new_status}")
+        if new_status == 'posting':
+            data = {
+                "old-status": "post",   
+                "new-status": "posting"
+            }
+        else:
+            data = {
+                "new-status": new_status
+            }
+        print(f"Url: {status_url}, data: {data}")
+
+        response = requests.post(status_url, data=data)
+        if response.status_code == 200:
+            return True, None
+        else:
+            msg = (f"Failed to update status: {response.text}")
+            print(msg)
+            return False, msg
+        
+    except Exception as e:
+        msg = f"Failed to update status: {e}"
+        print(msg)
+        return False, str(e)
+        
  
 def post_to_website(item):    
     print (f'Posting {item["title"]} to {website}')
