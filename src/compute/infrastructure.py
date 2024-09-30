@@ -228,3 +228,33 @@ class StJamesCompute(Construct):
         # Grant the Lambda function necessary permissions
         events_table.grant_read_write_data(self.post_to_gov)
         post_results_topic.grant_publish(self.post_to_gov)
+
+        # Create a Lambda function for testing
+        self.post_to_test = lambda_.Function(
+            self, 'PostToTestLambda',
+            function_name='StJames-post-to-test',
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/compute/post_to_test'),
+            environment={
+                'TABLE_NAME': events_table.table_name,
+                'TOPIC_ARN': post_results_topic.topic_arn
+            },
+            timeout=Duration.seconds(10),
+        )
+
+        # Subscribe the post_to_gov Lambda to the events_topic
+        events_topic.add_subscription(
+            subscriptions.LambdaSubscription(
+                self.post_to_test,
+                filter_policy_with_message_body={
+                    'post': sns.FilterOrPolicy.filter(sns.SubscriptionFilter.string_filter(
+                        allowlist=['test']
+                    ))
+                }            
+            )
+        )        
+
+        # Grant the Lambda function necessary permissions
+        events_table.grant_read_write_data(self.post_to_test)
+        post_results_topic.grant_publish(self.post_to_test)  

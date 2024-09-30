@@ -4,7 +4,7 @@ from aws_cdk import (
     Tags
 )
 from constructs import Construct
-from src.api.infrastructure import StJamesApi
+from src.api.infrastructure import StJamesApi, StJamesApiResources
 from src.database.infrastructure import StJamesDatabase
 from src.compute.infrastructure import StJamesCompute
 from src.messaging.infrastructure import StJamesMessaging
@@ -27,20 +27,21 @@ class StJamesStack(Stack):
         
         # Create the SNS topic
         messaging = StJamesMessaging(self, "StJamesMessaging")
+              
+        # Create the API Gateway
+        api = StJamesApi(self, "StJamesApi")
         
         # Create the Lambda functions
-        compute = StJamesCompute(self, "StJamesLambdaProd",
+        compute = StJamesCompute(self, "StJamesCompute",
             events_table = database.events_table,
             events_topic = messaging.events_topic,
             post_results_topic = messaging.post_results_topic,
             data_bucket = storage.data_bucket,
             initial_events = "initialData/events.json")
-        
-        # Create the API Gateway
-        api = StJamesApi(self, "StJamesApiGateway",
-            post_events_handler = compute.process_events)
 
-        # Output the Events Table name
-        CfnOutput(self, "EventTableName", 
-            value=database.events_table.table_name,
-            export_name="StJamesEventTableName")
+        # Attach the Lambda functions to the API Gateway
+        StJamesApiResources(self, "StJamesApiResources",
+            api = api,
+            post_events_handler = compute.process_events,
+            status_handler = compute.process_events)
+

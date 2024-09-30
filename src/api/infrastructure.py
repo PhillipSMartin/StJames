@@ -1,18 +1,36 @@
 from aws_cdk import (
     aws_apigateway as apigw,
 )
-from aws_cdk.aws_lambda import Function
 from constructs import Construct
 
 class StJamesApi(Construct):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id)
 
-        post_events_handler = kwargs['post_events_handler']
-        self.events_api = apigw.LambdaRestApi(
+        self.events_api = apigw.RestApi(
             self, 'EventsApi',
-            handler=post_events_handler,
-            proxy=False
+            rest_api_name='StJames Events Api'
         )
 
-        self.events_api.root.add_resource('post-events').add_method('POST') 
+
+class StJamesApiResources(Construct):
+    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
+        super().__init__(scope, id)
+
+        api = kwargs['api']
+        post_events_handler = kwargs['post_events_handler']
+        status_handler = kwargs['status_handler']
+
+        post_events = api.events_api.root.add_resource('post-events')
+        post_events_integration = apigw.LambdaIntegration(post_events_handler)
+        post_events.add_method('POST', post_events_integration)
+
+        status = api.events_api.root.add_resource('status')
+        status_integration = apigw.LambdaIntegration(status_handler)
+        status.add_method('POST', status_integration, 
+            request_parameters={
+                'method.request.querystring.old-status': False,  # Optional
+                'method.request.querystring.new-status': True,   # Required
+            }
+        )
+
