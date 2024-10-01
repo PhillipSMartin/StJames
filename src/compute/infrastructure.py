@@ -63,9 +63,12 @@ class StJamesCompute(Construct):
         self.process_events.add_event_source(
             lambda_event_sources.DynamoEventSource(
                 events_table,
-                starting_position=lambda_.StartingPosition.TRIM_HORIZON,
-                batch_size=1,
-                retry_attempts=3
+                starting_position=lambda_.StartingPosition.LATEST,
+                filters=[
+                    lambda_.FilterCriteria.filter({
+                        "event_name": lambda_.FilterRule.is_equal("INSERT")
+                    })
+                ]            
             )
         )
 
@@ -81,7 +84,7 @@ class StJamesCompute(Construct):
             handler='index.handler',
             code=lambda_.Code.from_asset('src/compute/post_to_patch'),
             environment={
-                'TABLE_NAME': events_table.table_name,
+                'STATUS_URL': api.events_api.url_for_path("/status"),
                 'LOGIN_URL': "https://pep.patchapi.io/api/authn/token",
                 'POST_URL': "https://api.patch.com/calendar/write-api/event",
                 'SECRET_NAME': 'PatchCredentials',
@@ -121,7 +124,7 @@ class StJamesCompute(Construct):
             handler='index.handler',
             code=lambda_.Code.from_asset('src/compute/post_to_moms'),
             environment={
-                'TABLE_NAME': events_table.table_name,
+                'STATUS_URL': api.events_api.url_for_path("/status"),
                 'SECRET_NAME': 'MomsCredentials',
                 'REGION_NAME': aws_region,
                 'URL': "https://tockify.com/api/interim/submitEvent/94489701c7c811e5ba094b4c274892ab",
@@ -160,7 +163,7 @@ class StJamesCompute(Construct):
             handler='index.handler',
             code=lambda_.Code.from_asset('src/compute/post_to_sojourner'),
             environment={
-                'TABLE_NAME': events_table.table_name,
+                'STATUS_URL': api.events_api.url_for_path("/status"),
                 'URL': "https://sojourner.helpspot.com/index.php?pg=request",
                 'SECRET_NAME': 'SojournerCredentials',
                 'REGION_NAME': aws_region,
@@ -199,7 +202,7 @@ class StJamesCompute(Construct):
             handler='index.handler',
             code=lambda_.Code.from_asset('src/compute/post_to_gov'),
             environment={
-                'TABLE_NAME': events_table.table_name,
+                'STATUS_URL': api.events_api.url_for_path("/status"),
                 'LOGIN_URL': 'https://events.westchestergov.com/event-calendar-sign-in', 
                 'POST_URL': 'https://events.westchestergov.com/event-submission',    
                 'SECRET_NAME': 'GovCredentials',
