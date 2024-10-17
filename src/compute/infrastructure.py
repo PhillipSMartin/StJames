@@ -66,7 +66,7 @@ class StJamesCompute(Construct):
                 starting_position=lambda_.StartingPosition.LATEST,
                 filters=[
                     lambda_.FilterCriteria.filter({
-                        "event_name": lambda_.FilterRule.is_equal("INSERT")
+                        "eventName": lambda_.FilterRule.is_equal("INSERT")
                     })
                 ]            
             )

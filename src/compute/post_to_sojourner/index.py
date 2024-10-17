@@ -90,10 +90,12 @@ def handler(event, context):
                         
 def post_to_sns(success, item, error_message=None): 
     try:      
+        title = item['title'] if item is not None else ''
+        subject = f"Post to {website} {'succeeded' if success else 'failed'}: {title}"[:100]
         sns.publish(
             TopicArn=topic_arn,
             Message=error_message or 'No errors',
-            Subject=f"Post to {website} {'succeeded' if success else 'failed'}: { item['title'] if item is not None else '' }"
+            Subject=subject
         )
     except Exception as e:
         print(f"Failed to post to SNS: {e}")

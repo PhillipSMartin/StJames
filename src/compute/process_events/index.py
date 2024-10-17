@@ -55,13 +55,31 @@ def process_dynamodb_stream(event):
     processed_count = 0
     for record in event['Records']:
         if record['eventName'] == 'INSERT':
-            item = record['dynamodb']['NewImage']
+            item = convert_dynamodb_item( record['dynamodb']['NewImage'] )
             print(f"Processing: {item['title']}: post={item['post']}")
 
             if post_to_sns(item):
                 processed_count += 1
                 
     print(f"Processed {processed_count} table inserts")
+
+def convert_dynamodb_item(item):
+    def convert_value(value):
+        if isinstance(value, dict):
+            if 'S' in value:
+                return value['S']
+            elif 'N' in value:
+                return int(value['N']) if value['N'].isdigit() else float(value['N'])
+            elif 'BOOL' in value:
+                return value['BOOL']
+            elif 'L' in value:
+                return [convert_value(v) for v in value['L']]
+            elif 'M' in value:
+                return convert_dynamodb_item(value['M'])
+        return value
+
+    return {k: convert_value(v) for k, v in item.items()}
+
 
 def process_api_call(event):
     try:
@@ -108,7 +126,7 @@ def post_to_sns(item):
         del item['version']
         
     message = json.dumps(item)
-    subject = f"New post: {item.get('title', 'Untitled')}"
+    subject = f"New post: {item.get('title', 'Untitled')}"[:100]
     
     try:
         response = sns.publish(
