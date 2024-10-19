@@ -242,6 +242,7 @@ def post_to_website(message):
         print(f"Headers: { headers }")
 
         if 'test' in message:
+            print("Test mode - not posting")
             return True, None
         
         response = requests.post(url, json=payload, headers=headers)

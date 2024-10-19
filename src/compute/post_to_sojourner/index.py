@@ -248,6 +248,7 @@ def post_to_website(message, form_values):
         print(f"Headers: { headers }")
 
         if 'test' in message:
+            print("Test mode - not posting")
             return True, None
                 
         response = requests.post(url, data=payload, headers=headers, cookies=form_values['cookies'])
