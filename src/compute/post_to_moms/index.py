@@ -94,7 +94,7 @@ def post_to_sns(success, item, error_message=None):
         )
     except Exception as e:
         print(f"Failed to post to SNS: {e}")
-
+ 
 def update_status(item, new_status):
     try:
         print(f"Updating status of {item['title']} to {new_status}")
@@ -106,14 +106,18 @@ def update_status(item, new_status):
         if new_status == 'posting':
             params["old-status"] = "post"
 
-        response = requests.post(status_url, params=params)       
-        if response and response.status_code == 200:
+        resp = requests.post(status_url, params=params, timeout=10)
+
+        print(f"Status API responded: {resp.status_code} {resp.reason}")
+        print(f"Status API body: {resp.text}")
+
+        if resp.status_code == 200:
             return True, None
         else:
-            msg = (f"Failed to update status: {response.text if response else 'No response from api'}")
+            msg = f"Failed to update status: {resp.status_code} {resp.text}"
             print(msg)
             return False, msg
-        
+
     except Exception as e:
         msg = f"Failed to update status: {e}"
         print(msg)
