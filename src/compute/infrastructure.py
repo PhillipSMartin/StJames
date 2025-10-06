@@ -282,4 +282,79 @@ class StJamesCompute(Construct):
 
         # Grant the Lambda function necessary permissions
         events_table.grant_read_write_data(self.process_status)
+
+        # ------------------------------
+        # NEW: /events Lambda functions
+        # ------------------------------
+
+        # POST /events  -> create
+        self.events_create = lambda_.Function(
+            self, 'EventsCreateLambda',
+            function_name='StJames-events-create',
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/compute/events_create'),
+            environment={
+                'TABLE_NAME': events_table.table_name,
+            },
+            timeout=Duration.seconds(15),
+        )
+        events_table.grant_read_write_data(self.events_create)
+
+        # GET /events/{access}  -> list by partition key
+        self.events_list = lambda_.Function(
+            self, 'EventsListLambda',
+            function_name='StJames-events-list',
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/compute/events_list'),
+            environment={
+                'TABLE_NAME': events_table.table_name,
+            },
+            timeout=Duration.seconds(15),
+        )
+        events_table.grant_read_data(self.events_list)
+
+        # GET /events/{access}/{date_id} -> get item
+        self.events_get = lambda_.Function(
+            self, 'EventsGetLambda',
+            function_name='StJames-events-get',
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/compute/events_get'),
+            environment={
+                'TABLE_NAME': events_table.table_name,
+            },
+            timeout=Duration.seconds(10),
+        )
+        events_table.grant_read_data(self.events_get)
+
+        # PUT /events/{access}/{date_id} -> update item
+        self.events_update = lambda_.Function(
+            self, 'EventsUpdateLambda',
+            function_name='StJames-events-update',
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/compute/events_update'),
+            environment={
+                'TABLE_NAME': events_table.table_name,
+            },
+            timeout=Duration.seconds(20),
+        )
+        events_table.grant_read_write_data(self.events_update)
+
+        # DELETE /events/{access}/{date_id} -> delete item
+        self.events_delete = lambda_.Function(
+            self, 'EventsDeleteLambda',
+            function_name='StJames-events-delete',
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler='index.handler',
+            code=lambda_.Code.from_asset('src/compute/events_delete'),
+            environment={
+                'TABLE_NAME': events_table.table_name,
+            },
+            timeout=Duration.seconds(10),
+        )
+        events_table.grant_read_write_data(self.events_delete)
+
         

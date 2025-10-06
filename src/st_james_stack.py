@@ -40,8 +40,18 @@ class StJamesStack(Stack):
             api = api)
 
         # Attach the Lambda functions to the API Gateway
+        # StJamesApiResources(self, "StJamesApiResources",
+        #     api = api,
+        #     post_events_handler = compute.process_events,
+        #     status_handler = compute.process_status)
+        
         StJamesApiResources(self, "StJamesApiResources",
-            api = api,
-            post_events_handler = compute.process_events,
-            status_handler = compute.process_status)
+            api=api,
+            post_events_handler=compute.process_events,  
+            status_handler=compute.process_status,    
+            events_create=compute.events_create,
+            events_list=compute.events_list,
+            events_get=compute.events_get,
+            events_update=compute.events_update,
+            events_delete=compute.events_delete)
 

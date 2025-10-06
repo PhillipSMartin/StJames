@@ -2,7 +2,6 @@ from aws_cdk import (
     aws_apigateway as apigw,
 )
 from constructs import Construct
-import re
 
 
 class StJamesApi(Construct):
@@ -18,14 +17,27 @@ class StJamesApi(Construct):
             )
         )
 
+        # Ensure ALL default gateway error responses include CORS
+        for code in ['DEFAULT_4_XX', 'DEFAULT_5_XX']:
+            apigw.GatewayResponse(
+                self, f'{code}WithCors',
+                rest_api=self.events_api,
+                type=getattr(apigw.ResponseType, code),
+                response_headers={
+                    'Access-Control-Allow-Origin': "'*'",
+                    'Access-Control-Allow-Headers': "'Content-Type,Authorization,X-Requested-With'",
+                    'Access-Control-Allow-Methods': "'GET,POST,PUT,DELETE,OPTIONS'"
+                },
+                templates={'application/json': '{"message":$context.error.messageString}'}
+            )
+
 
 class StJamesApiResources(Construct):
     """
-    Extends the existing API with /post-events, /status (existing),
-    and now a fully modeled /events REST surface for DynamoDB CRUD.
-
-    Lambda integrations for /events are temporarily mocked as 501 so
-    the API shape can ship now; swap to LambdaIntegration later.
+    Wires the REST surface and CORS.
+    Expects Lambda handlers passed in via kwargs:
+      - post_events_handler, status_handler
+      - events_create, events_list, events_get, events_update, events_delete
     """
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id)
@@ -34,16 +46,22 @@ class StJamesApiResources(Construct):
         post_events_handler = kwargs['post_events_handler']
         status_handler = kwargs['status_handler']
 
+        events_create = kwargs['events_create']
+        events_list   = kwargs['events_list']
+        events_get    = kwargs['events_get']
+        events_update = kwargs['events_update']
+        events_delete = kwargs['events_delete']
+
         # --------------------
         # Existing endpoints
         # --------------------
         post_events = api.events_api.root.add_resource('post-events')
-        post_events_integration = apigw.LambdaIntegration(post_events_handler)
-        post_events.add_method('POST', post_events_integration)
+        post_events.add_method('POST', apigw.LambdaIntegration(post_events_handler))
 
         status = api.events_api.root.add_resource('status')
-        status_integration = apigw.LambdaIntegration(status_handler)
-        status.add_method('POST', status_integration,
+        status.add_method(
+            'POST',
+            apigw.LambdaIntegration(status_handler),
             request_parameters={
                 'method.request.querystring.old-status': False,  # Optional
                 'method.request.querystring.new-status': True,   # Required
@@ -55,7 +73,7 @@ class StJamesApiResources(Construct):
         # --------------------
         # New /events surface
         # --------------------
-        # Shared request validators
+        # Request validators (body vs params)
         body_validator = apigw.RequestValidator(
             api.events_api, 'EventsBodyValidator',
             rest_api=api.events_api,
@@ -69,11 +87,11 @@ class StJamesApiResources(Construct):
             validate_request_parameters=True
         )
 
-        # JSON Schema pieces
-        allowed_lists_enum = ['moms', 'sojourner', 'patch', 'test']  # from sample item
+        # Shared JSON schema parts
+        allowed_lists_enum = ['moms', 'sojourner', 'patch', 'test']
         date_guid_regex = r'^\d{4}-\d{2}-\d{2}#[0-9a-fA-F-]{36}$'
 
-        # Full event model for POST (create)
+        # Create model (accepts either 'date' or 'date_id'; Lambda enforces "at least one")
         event_create_model = apigw.Model(
             api.events_api, 'EventCreateModel',
             rest_api=api.events_api,
@@ -84,15 +102,20 @@ class StJamesApiResources(Construct):
                 title='EventCreate',
                 type=apigw.JsonSchemaType.OBJECT,
                 additional_properties=False,
-                required=['access', 'date_id', 'title'],
+                # Only require access and title; Lambda checks for date/date_id
+                required=['access', 'title'],
                 properties={
                     'access': apigw.JsonSchema(
                         type=apigw.JsonSchemaType.STRING,
                         enum=['public', 'private']
                     ),
-                    'date_id': apigw.JsonSchema(
+                    'date': apigw.JsonSchema(  # NEW: plain date
                         type=apigw.JsonSchemaType.STRING,
-                        pattern=date_guid_regex
+                        pattern=r'^\d{4}-\d{2}-\d{2}$'
+                    ),
+                    'date_id': apigw.JsonSchema(  # OPTIONAL: full date_id
+                        type=apigw.JsonSchemaType.STRING,
+                        pattern=r'^\d{4}-\d{2}-\d{2}#[0-9a-fA-F-]{36}$'
                     ),
                     'title': apigw.JsonSchema(type=apigw.JsonSchemaType.STRING),
                     'time': apigw.JsonSchema(type=apigw.JsonSchemaType.STRING),
@@ -101,31 +124,28 @@ class StJamesApiResources(Construct):
                         type=apigw.JsonSchemaType.ARRAY,
                         unique_items=True,
                         items=apigw.JsonSchema(
-                            type=apigw.JsonSchemaType.STRING,
-                            enum=allowed_lists_enum
+                            type=apigw.JsonSchemaType.STRING, enum=['moms','sojourner','patch','test']
                         )
                     ),
                     'posting': apigw.JsonSchema(
                         type=apigw.JsonSchemaType.ARRAY,
                         unique_items=True,
                         items=apigw.JsonSchema(
-                            type=apigw.JsonSchemaType.STRING,
-                            enum=allowed_lists_enum
+                            type=apigw.JsonSchemaType.STRING, enum=['moms','sojourner','patch','test']
                         )
                     ),
                     'post': apigw.JsonSchema(
                         type=apigw.JsonSchemaType.ARRAY,
                         unique_items=True,
                         items=apigw.JsonSchema(
-                            type=apigw.JsonSchemaType.STRING,
-                            enum=allowed_lists_enum
+                            type=apigw.JsonSchemaType.STRING, enum=['moms','sojourner','patch','test']
                         )
                     )
                 }
             )
         )
 
-        # Update model (same fields but all optional; keys come from path)
+        # Update model (keys in path, all body fields optional)
         event_update_model = apigw.Model(
             api.events_api, 'EventUpdateModel',
             rest_api=api.events_api,
@@ -144,54 +164,64 @@ class StJamesApiResources(Construct):
                         type=apigw.JsonSchemaType.ARRAY,
                         unique_items=True,
                         items=apigw.JsonSchema(
-                            type=apigw.JsonSchemaType.STRING,
-                            enum=allowed_lists_enum
+                            type=apigw.JsonSchemaType.STRING, enum=allowed_lists_enum
                         )
                     ),
                     'posting': apigw.JsonSchema(
                         type=apigw.JsonSchemaType.ARRAY,
                         unique_items=True,
                         items=apigw.JsonSchema(
-                            type=apigw.JsonSchemaType.STRING,
-                            enum=allowed_lists_enum
+                            type=apigw.JsonSchemaType.STRING, enum=allowed_lists_enum
                         )
                     ),
                     'post': apigw.JsonSchema(
                         type=apigw.JsonSchemaType.ARRAY,
                         unique_items=True,
                         items=apigw.JsonSchema(
-                            type=apigw.JsonSchemaType.STRING,
-                            enum=allowed_lists_enum
+                            type=apigw.JsonSchemaType.STRING, enum=allowed_lists_enum
                         )
                     )
                 }
             )
         )
 
-        # Basic 4xx/5xx responses for the mocks
-        default_method_responses = [
-            apigw.MethodResponse(status_code='200'),
-            apigw.MethodResponse(status_code='201'),
-            apigw.MethodResponse(status_code='204'),
-            apigw.MethodResponse(status_code='400'),
-            apigw.MethodResponse(status_code='404'),
-            apigw.MethodResponse(status_code='422'),
-            apigw.MethodResponse(status_code='500'),
-        ]
+        # --------------------
+        # Helpers for CORS
+        # --------------------
+        def method_cors_responses(success_codes: list[str]):
+            # Add CORS headers on method responses (declared)
+            return [apigw.MethodResponse(
+                        status_code=code,
+                        response_parameters={
+                            'method.response.header.Access-Control-Allow-Origin': True,
+                            'method.response.header.Access-Control-Allow-Headers': True,
+                            'method.response.header.Access-Control-Allow-Methods': True
+                        }
+                    ) for code in success_codes] + [
+                    apigw.MethodResponse(
+                        status_code=code,
+                        response_parameters={
+                            'method.response.header.Access-Control-Allow-Origin': True,
+                            'method.response.header.Access-Control-Allow-Headers': True,
+                            'method.response.header.Access-Control-Allow-Methods': True
+                        }
+                    ) for code in ['400','401','403','404','409','422','500']
+                ]
 
-        # Mock integrations (swap to LambdaIntegration later)
-        mock_501 = apigw.MockIntegration(
-            integration_responses=[
-                apigw.IntegrationResponse(
-                    status_code='501',
-                    response_templates={'application/json': '{"message":"Not Implemented"}'}
-                )
-            ],
-            passthrough_behavior=apigw.PassthroughBehavior.WHEN_NO_MATCH,
-            request_templates={'application/json': '{"statusCode": 501}'}
-        )
+        def integration_cors_response(status_code: str, template: str = None):
+            return apigw.IntegrationResponse(
+                status_code=status_code,
+                response_parameters={
+                    'method.response.header.Access-Control-Allow-Origin': "'*'",
+                    'method.response.header.Access-Control-Allow-Headers': "'Content-Type,Authorization,X-Requested-With'",
+                    'method.response.header.Access-Control-Allow-Methods': "'GET,POST,PUT,DELETE,OPTIONS'",
+                },
+                response_templates={'application/json': template} if template else None
+            )
 
-        # /events
+        # --------------------
+        # Resources & Methods
+        # --------------------
         events = api.events_api.root.add_resource('events')
         events.add_cors_preflight(
             allow_origins=apigw.Cors.ALL_ORIGINS,
@@ -199,25 +229,100 @@ class StJamesApiResources(Construct):
             allow_headers=['Content-Type', 'Authorization', 'X-Requested-With']
         )
 
-        # POST /events  (create)
+        # POST /events  -> create
+        # events.add_method(
+        #     http_method='POST',
+        #     integration=apigw.LambdaIntegration(events_create),
+        #     request_models={'application/json': event_create_model},
+        #     request_validator=body_validator,
+        #     method_responses=method_cors_responses(['201'])
+        # )
+
         events.add_method(
             http_method='POST',
-            integration=mock_501,
+            integration=apigw.LambdaIntegration(events_create),
             request_models={'application/json': event_create_model},
             request_validator=body_validator,
-            method_responses=default_method_responses
+            method_responses=[
+                apigw.MethodResponse(
+                    status_code='201',
+                    response_parameters={
+                        'method.response.header.Access-Control-Allow-Origin': True,
+                        'method.response.header.Access-Control-Allow-Headers': True,
+                        'method.response.header.Access-Control-Allow-Methods': True,
+                        'method.response.header.Location': True,   # <- allow Location header
+                    }
+                ),
+                # keep standard error shapes declared so CORS headers appear there too
+                apigw.MethodResponse(
+                    status_code='400',
+                    response_parameters={
+                        'method.response.header.Access-Control-Allow-Origin': True,
+                        'method.response.header.Access-Control-Allow-Headers': True,
+                        'method.response.header.Access-Control-Allow-Methods': True,
+                    }
+                ),
+                apigw.MethodResponse(
+                    status_code='401',
+                    response_parameters={
+                        'method.response.header.Access-Control-Allow-Origin': True,
+                        'method.response.header.Access-Control-Allow-Headers': True,
+                        'method.response.header.Access-Control-Allow-Methods': True,
+                    }
+                ),
+                apigw.MethodResponse(
+                    status_code='403',
+                    response_parameters={
+                        'method.response.header.Access-Control-Allow-Origin': True,
+                        'method.response.header.Access-Control-Allow-Headers': True,
+                        'method.response.header.Access-Control-Allow-Methods': True,
+                    }
+                ),
+                apigw.MethodResponse(
+                    status_code='409',
+                    response_parameters={
+                        'method.response.header.Access-Control-Allow-Origin': True,
+                        'method.response.header.Access-Control-Allow-Headers': True,
+                        'method.response.header.Access-Control-Allow-Methods': True,
+                    }
+                ),
+                apigw.MethodResponse(
+                    status_code='422',
+                    response_parameters={
+                        'method.response.header.Access-Control-Allow-Origin': True,
+                        'method.response.header.Access-Control-Allow-Headers': True,
+                        'method.response.header.Access-Control-Allow-Methods': True,
+                    }
+                ),
+                apigw.MethodResponse(
+                    status_code='500',
+                    response_parameters={
+                        'method.response.header.Access-Control-Allow-Origin': True,
+                        'method.response.header.Access-Control-Allow-Headers': True,
+                        'method.response.header.Access-Control-Allow-Methods': True,
+                    }
+                ),
+            ]
         )
 
         # /events/{access}
         events_access = events.add_resource('{access}')
-        # Validate "access" via requestParameters & a requestValidator (API GW can't enum path directly,
-        # but we can document and re-validate in Lambda; still we keep a param validator here.)
+
+        # GET /events/{access} -> list
         events_access.add_method(
             http_method='GET',
-            integration=mock_501,
+            integration=apigw.LambdaIntegration(events_list,
+                integration_responses=[
+                    integration_cors_response('200'),
+                    integration_cors_response('400'),
+                    integration_cors_response('401'),
+                    integration_cors_response('403'),
+                    integration_cors_response('404'),
+                    integration_cors_response('500'),
+                ]),
             request_parameters={'method.request.path.access': True},
             request_validator=params_validator,
-            method_responses=default_method_responses
+            method_responses=method_cors_responses(['200'])
         )
 
         # /events/{access}/{date_id}
@@ -226,41 +331,59 @@ class StJamesApiResources(Construct):
         # GET item
         events_item.add_method(
             http_method='GET',
-            integration=mock_501,
+            integration=apigw.LambdaIntegration(events_get,
+                integration_responses=[
+                    integration_cors_response('200'),
+                    integration_cors_response('404'),
+                    integration_cors_response('422'),
+                    integration_cors_response('500'),
+                ]),
             request_parameters={
                 'method.request.path.access': True,
                 'method.request.path.date_id': True
             },
             request_validator=params_validator,
-            method_responses=default_method_responses
+            method_responses=method_cors_responses(['200'])
         )
 
-        # PUT item (update)
+        # PUT item
         events_item.add_method(
             http_method='PUT',
-            integration=mock_501,
+            integration=apigw.LambdaIntegration(events_update,
+                integration_responses=[
+                    integration_cors_response('200'),
+                    integration_cors_response('404'),
+                    integration_cors_response('422'),
+                    integration_cors_response('500'),
+                ]),
             request_parameters={
                 'method.request.path.access': True,
                 'method.request.path.date_id': True
             },
+            request_models={'application/json': event_update_model},
             request_validator=apigw.RequestValidator(
                 api.events_api, 'EventsPutValidator',
                 rest_api=api.events_api,
                 validate_request_body=True,
                 validate_request_parameters=True
             ),
-            request_models={'application/json': event_update_model},
-            method_responses=default_method_responses
+            method_responses=method_cors_responses(['200'])
         )
 
         # DELETE item
         events_item.add_method(
             http_method='DELETE',
-            integration=mock_501,
+            integration=apigw.LambdaIntegration(events_delete,
+                integration_responses=[
+                    integration_cors_response('204'),
+                    integration_cors_response('404'),
+                    integration_cors_response('422'),
+                    integration_cors_response('500'),
+                ]),
             request_parameters={
                 'method.request.path.access': True,
                 'method.request.path.date_id': True
             },
             request_validator=params_validator,
-            method_responses=default_method_responses
+            method_responses=method_cors_responses(['204'])
         )
