@@ -1,10 +1,17 @@
 import os, json, re
 import boto3
 from botocore.exceptions import ClientError
+from urllib.parse import unquote
 
 TABLE = boto3.resource('dynamodb').Table(os.environ['TABLE_NAME'])
 ACCESS_ENUM = {'public', 'private'}
 DATE_ID_RE = re.compile(r'^\d{4}-\d{2}-\d{2}#[0-9a-fA-F-]{36}$')
+
+def normalize_path_ids(p):
+    access = (p or {}).get('access')
+    date_id_raw = (p or {}).get('date_id', '')
+    date_id = unquote(date_id_raw)  # turns %23 back into '#'
+    return access, date_id
 
 def bad(status, msg):
     return {"statusCode": status, "body": json.dumps({"message": msg})}
@@ -13,9 +20,7 @@ def ok():
     return {"statusCode": 204, "body": ""}
 
 def handler(event, context):
-    p = (event.get('pathParameters') or {})
-    access = p.get('access')
-    date_id = p.get('date_id')
+    access, date_id = normalize_path_ids(event.get('pathParameters'))
 
     if access not in ACCESS_ENUM:
         return bad(422, "access must be 'public' or 'private'")
