@@ -14,7 +14,7 @@ def inter_item_delay():
       DELAY_MS: base delay in milliseconds (default 250)
       JITTER_MS: max random jitter to add (default 150)
     """
-    base = int(os.getenv("DELAY_MS", "250"))
+    base = int(os.getenv("DELAY_MS", "1000"))
     jitter = int(os.getenv("JITTER_MS", "150"))
     sleep_ms = base + random.randint(0, jitter)
     time.sleep(sleep_ms / 1000.0)
