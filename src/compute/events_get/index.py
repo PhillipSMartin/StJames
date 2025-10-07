@@ -1,5 +1,15 @@
 import os, json, re
 import boto3
+from decimal import Decimal
+
+def jsonify(obj):
+    if isinstance(obj, list):
+        return [jsonify(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: jsonify(v) for k, v in obj.items()}
+    if isinstance(obj, Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    return obj
 
 TABLE = boto3.resource('dynamodb').Table(os.environ['TABLE_NAME'])
 ACCESS_ENUM = {'public', 'private'}
@@ -9,7 +19,7 @@ def bad(status, msg):
     return {"statusCode": status, "body": json.dumps({"message": msg})}
 
 def ok(item):
-    return {"statusCode": 200, "body": json.dumps(item)}
+    return {"statusCode": 200, "body": json.dumps(jsonify(item))}
 
 def handler(event, context):
     p = (event.get('pathParameters') or {})

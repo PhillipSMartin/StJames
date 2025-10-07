@@ -1,6 +1,16 @@
 import os, json, re, uuid
 import boto3
 from botocore.exceptions import ClientError
+from decimal import Decimal
+
+def jsonify(obj):
+    if isinstance(obj, list):
+        return [jsonify(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: jsonify(v) for k, v in obj.items()}
+    if isinstance(obj, Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    return obj
 
 TABLE = boto3.resource('dynamodb').Table(os.environ['TABLE_NAME'])
 ACCESS_ENUM = {'public', 'private'}
@@ -29,7 +39,9 @@ def ok_created(item, event):
     # If you use a custom domain with base path mapping, stage may be empty—this still works.
     base = f"https://{domain}"
     path = f"/{stage}" if stage else ""
-    location = f"{base}{path}/events/{item['access']}/{item['date_id']}"
+   # encode the date_id so '#' becomes '%23'
+    encoded_id = quote(item['date_id'], safe="")
+    location = f"{base}{path}/events/{item['access']}/{encoded_id}"
 
     return {
         "statusCode": 201,
@@ -41,6 +53,7 @@ def ok_created(item, event):
         },
         "body": json.dumps({"message": "Created", "item": item, "location": location})
     }
+from urllib.parse import quote
 
 def validate_lists(item):
     buckets = {k: set(item.get(k, []) or []) for k in ('post','posting','posted')}
